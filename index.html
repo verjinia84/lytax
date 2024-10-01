@@ -328,8 +328,8 @@
                     <input type="text" class="giftDeductionCustom" placeholder="직접 입력">
                 </div>
                 <div class="checkbox-container">
-                    <input type="checkbox" id="generationSkipping" class="generationSkipping">
-                    <label for="generationSkipping">세대할증</label>
+                    <input type="checkbox" id="generationSkipping_${Date.now()}" class="generationSkipping">
+                    <label for="generationSkipping_${Date.now()}">세대할증</label>
                 </div>
                 <div class="result">
                     <div class="result-row">
@@ -367,8 +367,15 @@
                 });
             });
 
-            calculator.querySelector('.generationSkipping').addEventListener('change', function() {
+            const generationSkippingCheckbox = calculator.querySelector('.generationSkipping');
+            generationSkippingCheckbox.addEventListener('change', function() {
                 calculateGiftTax(calculator);
+            });
+
+            // 라벨 클릭 이벤트 추가
+            const generationSkippingLabel = calculator.querySelector('label[for^="generationSkipping_"]');
+            generationSkippingLabel.addEventListener('click', function() {
+                setTimeout(() => calculateGiftTax(calculator), 0);
             });
 
             calculator.querySelector('.delete-button').addEventListener('click', function() {
@@ -579,49 +586,37 @@
 
         // 스크린샷 기능 수정
         function takeScreenshot() {
+            const container = document.getElementById('calculatorContainer');
+            const totalTaxElement = document.getElementById('totalTax');
+            
             // 현재 스크롤 위치 저장
             const scrollPos = window.pageYOffset;
 
-            // body와 html의 원래 스타일 저장
-            const originalBodyStyle = document.body.style.cssText;
-            const originalHtmlStyle = document.documentElement.style.cssText;
-
-            // 스크롤바 숨기기
-            document.body.style.overflow = 'hidden';
-            document.documentElement.style.overflow = 'hidden';
-
-            // body와 html 스타일 임시 변경
-            document.body.style.cssText = `
+            // 임시 컨테이너 생성
+            const tempContainer = document.createElement('div');
+            tempContainer.style.cssText = `
                 position: absolute;
-                width: 100%;
-                height: auto;
-                min-height: 100%;
-                top: 0;
-                left: 0;
+                width: ${container.offsetWidth}px;
+                background-color: ${getComputedStyle(document.body).backgroundColor};
+                padding: 20px;
+                box-sizing: border-box;
             `;
-            document.documentElement.style.height = 'auto';
 
-            // 전체 높이 계산
-            const fullHeight = Math.max(
-                document.body.scrollHeight,
-                document.body.offsetHeight,
-                document.documentElement.clientHeight,
-                document.documentElement.scrollHeight,
-                document.documentElement.offsetHeight
-            );
+            // 계산기 컨테이너와 총 부담세액 요소를 임시 컨테이너에 복사
+            tempContainer.appendChild(container.cloneNode(true));
+            tempContainer.appendChild(totalTaxElement.cloneNode(true));
 
-            html2canvas(document.body, {
+            // 임시 컨테이너를 body에 추가
+            document.body.appendChild(tempContainer);
+
+            html2canvas(tempContainer, {
                 allowTaint: true,
                 useCORS: true,
-                height: fullHeight,
-                windowHeight: fullHeight,
-                scrollY: -window.scrollY
+                height: tempContainer.scrollHeight,
+                windowHeight: tempContainer.scrollHeight
             }).then(function(canvas) {
-                // 원래 스타일 복원
-                document.body.style.cssText = originalBodyStyle;
-                document.documentElement.style.cssText = originalHtmlStyle;
-                document.body.style.overflow = '';
-                document.documentElement.style.overflow = '';
+                // 임시 컨테이너 제거
+                document.body.removeChild(tempContainer);
 
                 // 원래 스크롤 위치로 복원
                 window.scrollTo(0, scrollPos);
