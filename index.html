@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>세금 계산기</title>
+    <!-- html2canvas 라이브러리 추가 -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <style>
         :root {
             --primary-color: #3498db;
@@ -152,6 +154,15 @@
         .calculator-type-button.active {
             background-color: var(--secondary-color);
         }
+
+        /* 스크린샷 버튼 스타일 추가 */
+        #screenshotButton {
+            background-color: #27ae60;
+            margin-left: 10px;
+        }
+        #screenshotButton:hover {
+            background-color: #2ecc71;
+        }
     </style>
 </head>
 <body>
@@ -159,6 +170,7 @@
     <div class="calculator-type-buttons">
         <button id="incomeButton" class="calculator-type-button active">2024년 종합소득세 계산기</button>
         <button id="giftButton" class="calculator-type-button">증여세 계산기</button>
+        <button id="screenshotButton" class="calculator-type-button">스크린샷</button>
     </div>
     <div class="calculator-container" id="calculatorContainer"></div>
     <div class="buttons">
@@ -235,7 +247,7 @@
                     <label for="generationSkipping">세대할증</label>
                 </div>
                 <div class="result">
-                    <p>증여세 과세표준: <span class="taxableGift">0</span> 원</p>
+                    <p>증여세 과���표준: <span class="taxableGift">0</span> 원</p>
                     <p>산출세액: <span class="calculatedTax">0</span> 원</p>
                 </div>
                 <div class="result">
@@ -303,7 +315,7 @@
             const finalTax = Math.max(0, calculatedTax - taxCreditReduction);
             calculator.querySelector('.finalTax').innerText = formatNumber(Math.round(finalTax));
 
-            // 최저한세 계산
+            // ��저한세 계산
             let minimumTax = 0;
             if (calculatedTax <= 30000000) {
                 minimumTax = calculatedTax * 0.35;
@@ -396,10 +408,21 @@
             switchCalculatorType(calculatorType);
         }
 
+        // 스크린샷 기능 추가
+        function takeScreenshot() {
+            html2canvas(document.body).then(function(canvas) {
+                var link = document.createElement('a');
+                link.download = '세금계산기_스크린샷.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+        }
+
         document.getElementById('incomeButton').addEventListener('click', () => switchCalculatorType('income'));
         document.getElementById('giftButton').addEventListener('click', () => switchCalculatorType('gift'));
         document.getElementById('addCalculator').addEventListener('click', addCalculator);
         document.getElementById('resetAll').addEventListener('click', resetAll);
+        document.getElementById('screenshotButton').addEventListener('click', takeScreenshot);
 
         // 초기 계산기 추가
         switchCalculatorType('income');
