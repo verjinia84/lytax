@@ -652,19 +652,29 @@
             // 임시 컨테이너를 body에 추가
             document.body.appendChild(tempContainer);
 
-            // 임시 컨테이너 내의 입력 필드 값을 업데이트
-            tempContainer.querySelectorAll('input').forEach((input, index) => {
-                const originalInput = container.querySelectorAll('input')[index];
-                input.value = originalInput.value;
+            // 임시 컨테이너 내의 모든 입력 필드와 선택 요소 값을 업데이트
+            tempContainer.querySelectorAll('input, select').forEach((element, index) => {
+                const originalElement = container.querySelectorAll('input, select')[index];
+                if (element.tagName === 'SELECT') {
+                    element.value = originalElement.value;
+                } else {
+                    element.value = originalElement.value;
+                }
             });
 
             // 임시 컨테이너 내의 계산 결과를 업데이트
             tempContainer.querySelectorAll('.calculator').forEach((calc, index) => {
                 const originalCalc = container.querySelectorAll('.calculator')[index];
-                calc.querySelectorAll('.result-value span').forEach((span, i) => {
-                    const originalSpan = originalCalc.querySelectorAll('.result-value span')[i];
+                calc.querySelectorAll('.result-value span, .result span').forEach((span, i) => {
+                    const originalSpan = originalCalc.querySelectorAll('.result-value span, .result span')[i];
                     span.innerText = originalSpan.innerText;
                 });
+            });
+
+            // 체크박스 상태 업데이트
+            tempContainer.querySelectorAll('input[type="checkbox"]').forEach((checkbox, index) => {
+                const originalCheckbox = container.querySelectorAll('input[type="checkbox"]')[index];
+                checkbox.checked = originalCheckbox.checked;
             });
 
             // 폰트 로딩을 위한 지연
