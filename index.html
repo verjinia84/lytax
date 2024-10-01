@@ -13,7 +13,7 @@
             --background-color: #ecf0f1;
             --text-color: #34495e;
             --input-background: #fff;
-            --result-background: #e8f4fd;
+            --result-background: #e8f4fd; /* 파스텔톤 하늘색 */
         }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -62,6 +62,8 @@
         .result {
             margin-top: 15px; /* 20px에서 15px로 줄임 */
             padding: 10px; /* 15px에서 10px로 줄임 */
+            background-color: var(--result-background); /* 결과 영역 배경색 추가 */
+            border-radius: 4px; /* 모서리를 둥글게 */
         }
         .result p {
             margin: 5px 0;
