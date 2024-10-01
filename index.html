@@ -31,7 +31,7 @@
         .calculator {
             background-color: #fff;
             border-radius: 10px;
-            padding: 15px; /* 25px에서 15px로 줄임 */
+            padding: 15px; /* 20px에서 15px로 줄임 */
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             width: 100%;
             max-width: 350px;
@@ -45,25 +45,26 @@
         }
         label {
             display: block;
-            margin: 10px 0 3px; /* 15px 0 5px에서 줄임 */
+            margin: 10px 0 3px; /* 이전 설정 유지 */
             color: var(--secondary-color);
-            font-weight: bold;
+            font-weight: bold; /* 볼드 스타일 복원 */
         }
         input[type="text"], select {
             display: block;
             width: calc(100% - 20px);
-            padding: 8px; /* 10px에서 8px로 줄임 */
+            padding: 10px; /* 9px에서 10px로 증가 */
             border: 1px solid #bdc3c7;
             border-radius: 4px;
             background-color: var(--input-background);
             color: var(--text-color);
-            font-size: 14px; /* 16px에서 14px로 줄임 */
+            font-size: 14px; /* 13px에서 14px로 증가 */
+            margin-bottom: 5px;
         }
         .result {
             margin-top: 15px; /* 20px에서 15px로 줄임 */
             padding: 10px; /* 15px에서 10px로 줄임 */
-            background-color: var(--result-background); /* 결과 영역 배경색 추가 */
-            border-radius: 4px; /* 모서리를 둥글게 */
+            background-color: var(--result-background);
+            border-radius: 4px;
         }
         .result p {
             margin: 5px 0;
@@ -190,40 +191,64 @@
         .result-row {
             display: flex;
             justify-content: space-between;
-            margin: 5px 0;
-            font-weight: bold;  /* 볼드체 추가 */
+            align-items: center;
+            margin-bottom: 5px; /* 8px에서 5px로 줄임 */
         }
 
-        .result-label {
-            text-align: left;
-        }
-
-        .result-value {
-            text-align: right;
+        .result-label, .result-value {
+            padding: 3px 0;
+            font-weight: bold;
+            font-size: 14px; /* 13px에서 14px로 증가 */
         }
 
         .gift-deduction-container {
             display: flex;
             flex-direction: column;
-            gap: 10px; /* 요소들 사이의 간격 설정 */
+            gap: 5px; /* 10px에서 5px로 줄임 */
         }
 
         .gift-deduction-container select,
         .gift-deduction-container input {
             width: 100%;
-            box-sizing: border-box; /* padding과 border를 width에 포함 */
+            box-sizing: border-box;
+            margin-bottom: 0; /* 하단 여백 제거 */
         }
 
-        /* 직접 입력 칸의 스타일 추가 */
+        /* 직접 입력 칸의 스타일 수정 */
         .giftDeductionCustom {
-            width: 100% !important; /* 상위 스타일을 덮어쓰기 위해 !important 사용 */
+            width: 100% !important;
             display: block;
-            padding: 8px; /* 기존 input 스타일과 동일하게 설정 */
+            padding: 10px; /* 9px에서 10px로 증가 */
             border: 1px solid #bdc3c7;
             border-radius: 4px;
             background-color: var(--input-background);
             color: var(--text-color);
-            font-size: 14px;
+            font-size: 14px; /* 13px에서 14px로 증가 */
+            margin-top: 5px;
+        }
+
+        /* 전체적으로 위로 올리기 */
+        .calculator-container {
+            margin-top: -5px; /* -10px에서 -5px로 조정 */
+        }
+
+        /* 스크롤바 스타일 */
+        body {
+            scrollbar-width: thin;
+            scrollbar-color: var(--secondary-color) var(--background-color);
+        }
+
+        body::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        body::-webkit-scrollbar-track {
+            background: var(--background-color);
+        }
+
+        body::-webkit-scrollbar-thumb {
+            background-color: var(--secondary-color);
+            border-radius: 4px;
         }
     </style>
 </head>
@@ -261,7 +286,7 @@
                 <input type="text" class="monthMultiplier" value="12">
                 <label for="businessIncome">사업소득 (원):</label>
                 <input type="text" class="businessIncome" placeholder="금액을 입력하세요">
-                <label for="incomeDeduction">소득공제 (원):</label>
+                <label for="incomeDeduction">득공제 (원):</label>
                 <input type="text" class="incomeDeduction" value="1,500,000">
                 <div class="result">
                     <div class="result-row">
@@ -596,37 +621,74 @@
             const tempContainer = document.createElement('div');
             tempContainer.style.cssText = `
                 position: absolute;
+                left: -9999px;
                 width: ${container.offsetWidth}px;
                 background-color: ${getComputedStyle(document.body).backgroundColor};
                 padding: 20px;
                 box-sizing: border-box;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                color: ${getComputedStyle(document.body).color};
             `;
 
             // 계산기 컨테이너와 총 부담세액 요소를 임시 컨테이너에 복사
-            tempContainer.appendChild(container.cloneNode(true));
-            tempContainer.appendChild(totalTaxElement.cloneNode(true));
+            tempContainer.innerHTML = container.outerHTML + totalTaxElement.outerHTML;
+
+            // 스타일 복사 및 입력 필드 텍스트 정렬 스타일 추가
+            const styles = document.getElementsByTagName('style');
+            for (let i = 0; i < styles.length; i++) {
+                tempContainer.insertAdjacentHTML('afterbegin', styles[i].outerHTML);
+            }
+            const alignStyle = document.createElement('style');
+            alignStyle.textContent = `
+                input[type="text"], select {
+                    padding-top: 5px !important;
+                    padding-bottom: 15px !important;
+                    line-height: 1.2 !important;
+                    transform: translateY(3px) !important;
+                }
+            `;
+            tempContainer.insertAdjacentElement('afterbegin', alignStyle);
 
             // 임시 컨테이너를 body에 추가
             document.body.appendChild(tempContainer);
 
-            html2canvas(tempContainer, {
-                allowTaint: true,
-                useCORS: true,
-                height: tempContainer.scrollHeight,
-                windowHeight: tempContainer.scrollHeight
-            }).then(function(canvas) {
-                // 임시 컨테이너 제거
-                document.body.removeChild(tempContainer);
-
-                // 원래 스크롤 위치로 복원
-                window.scrollTo(0, scrollPos);
-
-                // 캔버스를 이미지로 변환하여 다운로드
-                var link = document.createElement('a');
-                link.download = '세금계산기_스크린샷.png';
-                link.href = canvas.toDataURL();
-                link.click();
+            // 임시 컨테이너 내의 입력 필드 값을 업데이트
+            tempContainer.querySelectorAll('input').forEach((input, index) => {
+                const originalInput = container.querySelectorAll('input')[index];
+                input.value = originalInput.value;
             });
+
+            // 임시 컨테이너 내의 계산 결과를 업데이트
+            tempContainer.querySelectorAll('.calculator').forEach((calc, index) => {
+                const originalCalc = container.querySelectorAll('.calculator')[index];
+                calc.querySelectorAll('.result-value span').forEach((span, i) => {
+                    const originalSpan = originalCalc.querySelectorAll('.result-value span')[i];
+                    span.innerText = originalSpan.innerText;
+                });
+            });
+
+            // 폰트 로딩을 위한 지연
+            setTimeout(() => {
+                html2canvas(tempContainer, {
+                    allowTaint: true,
+                    useCORS: true,
+                    height: tempContainer.scrollHeight,
+                    windowHeight: tempContainer.scrollHeight,
+                    scale: 2 // 해상도 증가
+                }).then(function(canvas) {
+                    // 임시 컨테이너 제거
+                    document.body.removeChild(tempContainer);
+
+                    // 원래 스크롤 위치로 복원
+                    window.scrollTo(0, scrollPos);
+
+                    // 캔버스를 이미지로 변환하여 다운로드
+                    var link = document.createElement('a');
+                    link.download = '세금계산기_스크린샷.png';
+                    link.href = canvas.toDataURL();
+                    link.click();
+                });
+            }, 500); // 0.5초 지연
         }
 
         document.getElementById('incomeButton').addEventListener('click', () => switchCalculatorType('income'));
