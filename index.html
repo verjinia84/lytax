@@ -247,7 +247,7 @@
                     <label for="generationSkipping">세대할증</label>
                 </div>
                 <div class="result">
-                    <p>증여세 과���표준: <span class="taxableGift">0</span> 원</p>
+                    <p>증여세 과세표준: <span class="taxableGift">0</span> 원</p>
                     <p>산출세액: <span class="calculatedTax">0</span> 원</p>
                 </div>
                 <div class="result">
@@ -315,7 +315,7 @@
             const finalTax = Math.max(0, calculatedTax - taxCreditReduction);
             calculator.querySelector('.finalTax').innerText = formatNumber(Math.round(finalTax));
 
-            // ��저한세 계산
+            // 최저저한세 계산
             let minimumTax = 0;
             if (calculatedTax <= 30000000) {
                 minimumTax = calculatedTax * 0.35;
