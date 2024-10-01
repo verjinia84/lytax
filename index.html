@@ -577,9 +577,56 @@
             switchCalculatorType(calculatorType);
         }
 
-        // 스크린샷 기능 추가
+        // 스크린샷 기능 수정
         function takeScreenshot() {
-            html2canvas(document.body).then(function(canvas) {
+            // 현재 스크롤 위치 저장
+            const scrollPos = window.pageYOffset;
+
+            // body와 html의 원래 스타일 저장
+            const originalBodyStyle = document.body.style.cssText;
+            const originalHtmlStyle = document.documentElement.style.cssText;
+
+            // 스크롤바 숨기기
+            document.body.style.overflow = 'hidden';
+            document.documentElement.style.overflow = 'hidden';
+
+            // body와 html 스타일 임시 변경
+            document.body.style.cssText = `
+                position: absolute;
+                width: 100%;
+                height: auto;
+                min-height: 100%;
+                top: 0;
+                left: 0;
+            `;
+            document.documentElement.style.height = 'auto';
+
+            // 전체 높이 계산
+            const fullHeight = Math.max(
+                document.body.scrollHeight,
+                document.body.offsetHeight,
+                document.documentElement.clientHeight,
+                document.documentElement.scrollHeight,
+                document.documentElement.offsetHeight
+            );
+
+            html2canvas(document.body, {
+                allowTaint: true,
+                useCORS: true,
+                height: fullHeight,
+                windowHeight: fullHeight,
+                scrollY: -window.scrollY
+            }).then(function(canvas) {
+                // 원래 스타일 복원
+                document.body.style.cssText = originalBodyStyle;
+                document.documentElement.style.cssText = originalHtmlStyle;
+                document.body.style.overflow = '';
+                document.documentElement.style.overflow = '';
+
+                // 원래 스크롤 위치로 복원
+                window.scrollTo(0, scrollPos);
+
+                // 캔버스를 이미지로 변환하여 다운로드
                 var link = document.createElement('a');
                 link.download = '세금계산기_스크린샷.png';
                 link.href = canvas.toDataURL();
