@@ -933,37 +933,41 @@
         }
 
         function saveCalculation(isNewSave = false) {
-            const activeCalculator = document.querySelector('.calculator:last-child');
-            if (!activeCalculator) return;
+            const calculators = document.querySelectorAll('.calculator');
+            if (calculators.length === 0) return;
 
-            const calculation = {
-                type: activeCalculator.querySelector('h2').textContent.includes('종합소득세') ? 'income' : 'gift',
-                title: activeCalculator.querySelector('h2').textContent,
-                inputs: Array.from(activeCalculator.querySelectorAll('input, select')).reduce((acc, input) => {
-                    acc[input.className] = input.value;
+            const calculations = Array.from(calculators).map(calculator => ({
+                type: calculator.querySelector('h2').textContent.includes('종합소득세') ? 'income' : 'gift',
+                title: calculator.querySelector('h2').textContent,
+                inputs: Array.from(calculator.querySelectorAll('input, select')).reduce((acc, input) => {
+                    if (input.type === 'checkbox') {
+                        acc[input.className] = input.checked;
+                    } else {
+                        acc[input.className] = input.value;
+                    }
                     return acc;
                 }, {}),
-                results: Array.from(activeCalculator.querySelectorAll('.result-value span')).reduce((acc, span) => {
+                results: Array.from(calculator.querySelectorAll('.result-value span')).reduce((acc, span) => {
                     acc[span.className] = span.textContent;
                     return acc;
                 }, {})
-            };
+            }));
 
             if (currentHistoryItem && !isNewSave) {
                 // 기존 히스토리 항목 업데이트
-                currentHistoryItem.calculations = [calculation];
+                currentHistoryItem.calculations = calculations;
                 updateHistoryItemInPanel(currentHistoryItem);
             } else {
                 // 새 히스토리 항목 생성
                 const date = new Date();
                 const dateString = `${String(date.getFullYear()).slice(2)}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
-                const calculatorType = calculation.type === 'income' ? '소득세' : '증여세';
+                const calculatorType = calculations[0].type === 'income' ? '소득세' : '증여세';
                 const uniqueCode = getUniqueHistoryCode();
                 let title = `${calculatorType}_${dateString}${uniqueCode}`;
 
                 const newHistoryItem = {
                     title: title,
-                    calculations: [calculation],
+                    calculations: calculations,
                     date: new Date().toISOString()
                 };
 
@@ -1041,21 +1045,30 @@
         function loadCalculation(calculations) {
             const container = document.getElementById('calculatorContainer');
             container.innerHTML = '';
-            // calculations가 배열이 아닌 경우 배열로 변환
-            const calculationsArray = Array.isArray(calculations) ? calculations : [calculations];
-            calculationsArray.forEach(calc => {
+            calculations.forEach(calc => {
                 const calculator = calc.type === 'income' ? createIncomeCalculator() : createGiftCalculator();
                 // 계산 테이블 제목 설정
                 calculator.querySelector('h2').textContent = calc.title;
                 Object.entries(calc.inputs).forEach(([className, value]) => {
                     const input = calculator.querySelector(`.${className}`);
-                    if (input) input.value = value;
+                    if (input) {
+                        if (input.type === 'checkbox') {
+                            input.checked = value;
+                        } else {
+                            input.value = value;
+                        }
+                    }
                 });
                 Object.entries(calc.results).forEach(([className, value]) => {
                     const span = calculator.querySelector(`.${className}`);
                     if (span) span.textContent = value;
                 });
                 container.appendChild(calculator);
+                
+                // 세대할증 체크박스 상태에 따라 재계산
+                if (calc.type === 'gift') {
+                    calculateGiftTax(calculator);
+                }
             });
             updateTotalTax();
         }
