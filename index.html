@@ -514,6 +514,12 @@
                 });
             });
 
+            const titleElement = calculator.querySelector('h2');
+            titleElement.contentEditable = true;
+            titleElement.addEventListener('blur', function() {
+                saveCalculation();
+            });
+
             return calculator;
         }
 
@@ -590,6 +596,12 @@
             calculator.querySelector('.delete-button').addEventListener('click', function() {
                 calculator.remove();
                 updateTotalTax();
+            });
+
+            const titleElement = calculator.querySelector('h2');
+            titleElement.contentEditable = true;
+            titleElement.addEventListener('blur', function() {
+                saveCalculation();
             });
 
             return calculator;
@@ -836,7 +848,7 @@
             // 임시 컨테이너를 body에 추가
             document.body.appendChild(tempContainer);
 
-            // 임시 컨테이너 내의 모 입력 필드와 선택 ���소 값을 업��이트
+            // 임시 컨테이��� 내의 모 입력 필드와 선택 소 값을 업이트
             tempContainer.querySelectorAll('input, select').forEach((element, index) => {
                 const originalElement = container.querySelectorAll('input, select')[index];
                 if (element.tagName === 'SELECT') {
@@ -902,31 +914,31 @@
         }
 
         function saveCalculation(isNewSave = false) {
-            const calculators = document.querySelectorAll('.calculator');
-            const calculations = Array.from(calculators).map(calc => {
-                return {
-                    type: calc.querySelector('h2').textContent.includes('종합소득세') ? 'income' : 'gift',
-                    inputs: Array.from(calc.querySelectorAll('input, select')).reduce((acc, input) => {
-                        acc[input.className] = input.value;
-                        return acc;
-                    }, {}),
-                    results: Array.from(calc.querySelectorAll('.result-value span')).reduce((acc, span) => {
-                        acc[span.className] = span.textContent;
-                        return acc;
-                    }, {})
-                };
-            });
+            const activeCalculator = document.querySelector('.calculator:last-child');
+            if (!activeCalculator) return;  // 활성화된 계산기가 없으면 함수 종료
+
+            const calculation = {
+                type: activeCalculator.querySelector('h2').textContent.includes('종합소득세') ? 'income' : 'gift',
+                title: activeCalculator.querySelector('h2').textContent,
+                inputs: Array.from(activeCalculator.querySelectorAll('input, select')).reduce((acc, input) => {
+                    acc[input.className] = input.value;
+                    return acc;
+                }, {}),
+                results: Array.from(activeCalculator.querySelectorAll('.result-value span')).reduce((acc, span) => {
+                    acc[span.className] = span.textContent;
+                    return acc;
+                }, {})
+            };
 
             const date = new Date();
             const dateString = `${String(date.getFullYear()).slice(2)}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
             
-            // 계산기 타입에 따라 제목 설정
-            const calculatorType = calculations[0].type === 'income' ? '소득세' : '증여세';
+            const calculatorType = calculation.type === 'income' ? '소득세' : '증여세';
             let title = isNewSave ? `${calculatorType}_${dateString}${String(historyCounter++).padStart(2, '0')}` : `${calculatorType}_${dateString}01`;
 
             const historyItem = {
                 title: title,
-                calculations: calculations,
+                calculations: [calculation],  // 단일 계산기만 저장
                 date: new Date().toISOString()
             };
 
@@ -989,8 +1001,12 @@
         function loadCalculation(calculations) {
             const container = document.getElementById('calculatorContainer');
             container.innerHTML = '';
-            calculations.forEach(calc => {
+            // calculations가 배열이 아닌 경우 배열로 변환
+            const calculationsArray = Array.isArray(calculations) ? calculations : [calculations];
+            calculationsArray.forEach(calc => {
                 const calculator = calc.type === 'income' ? createIncomeCalculator() : createGiftCalculator();
+                // 계산 테이블 제목 설정
+                calculator.querySelector('h2').textContent = calc.title;
                 Object.entries(calc.inputs).forEach(([className, value]) => {
                     const input = calculator.querySelector(`.${className}`);
                     if (input) input.value = value;
