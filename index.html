@@ -21,6 +21,7 @@
             padding: 10px; /* 20px에서 10px로 줄임 */
             background-color: var(--background-color);
             color: var(--text-color);
+            margin-left: 50px; /* 토글 버튼을 위한 공간 */
         }
         .calculator-container {
             display: flex;
@@ -250,20 +251,203 @@
             background-color: var(--secondary-color);
             border-radius: 4px;
         }
+
+        .history-panel {
+            position: fixed;
+            left: -250px;
+            top: 0;
+            width: 250px;
+            height: 100%;
+            background-color: #ffffff;
+            transition: 0.3s;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        }
+
+        .history-panel.open {
+            left: 0;
+        }
+
+        .toggle-history {
+            position: fixed;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            padding: 10px 5px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+            z-index: 1001;
+        }
+
+        .history-content {
+            padding: 20px;
+        }
+
+        .new-table-button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .history-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .history-item h3 {
+            margin: 0;
+            flex-grow: 1;
+            padding-right: 10px;
+            font-size: 14px; /* 글자 크기를 줄임 */
+        }
+
+        .delete-history {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #f9f9f9;
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1;
+        }
+
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+        .dropdown-content a {
+            color: black;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+        }
+
+        .dropdown-content a:hover {
+            background-color: #f1f1f1;
+        }
+
+        body {
+            margin-left: 50px; /* 토글 버튼을 위한 공간 */
+        }
+
+        .main-content {
+            transition: margin-left 0.3s;
+        }
+
+        .history-panel {
+            position: fixed;
+            left: -250px;
+            top: 0;
+            width: 250px;
+            height: 100%;
+            background-color: #f1f1f1;
+            transition: 0.3s;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .history-panel.open {
+            left: 0;
+        }
+
+        .toggle-history {
+            position: fixed;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            padding: 10px 5px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+            z-index: 1001;
+        }
+
+        .history-content {
+            padding: 20px;
+        }
+
+        .history-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 5px;
+        }
+
+        .history-item h3 {
+            margin: 0;
+            display: inline-block;
+        }
+
+        .delete-history {
+            float: right;
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
-    <h1>세금 계산기</h1>
-    <div class="calculator-type-buttons">
-        <button id="incomeButton" class="calculator-type-button active">2024년 종합소득세 계산기</button>
-        <button id="giftButton" class="calculator-type-button">증여세 계산기</button>
-        <button id="screenshotButton" class="calculator-type-button">스크린샷</button>
+    <div id="historyPanel" class="history-panel">
+        <button id="toggleHistory" class="toggle-history">히스토리</button>
+        <div class="history-content">
+            <button id="newTable" class="new-table-button">새 테이블</button>
+            <div id="historyItems"></div>
+        </div>
     </div>
-    <div class="calculator-container" id="calculatorContainer"></div>
-    <div class="total-tax" id="totalTax"></div>
-    <div class="buttons">
-        <button id="addCalculator">계산기 추가</button>
-        <button id="resetAll">모두 초기화</button>
+    
+    <div class="main-content">
+        <h1>세금 계산기</h1>
+        <div class="calculator-type-buttons">
+            <button id="incomeButton" class="calculator-type-button active">2024년 종합소득세 계산기</button>
+            <button id="giftButton" class="calculator-type-button">증여세 계산기</button>
+            <button id="screenshotButton" class="calculator-type-button">스크린샷</button>
+            <div class="dropdown">
+                <button id="saveButton" class="calculator-type-button">저장</button>
+                <div class="dropdown-content">
+                    <a href="#" id="saveAsNew">다른 이름으로 저장</a>
+                </div>
+            </div>
+        </div>
+        <div class="calculator-container" id="calculatorContainer"></div>
+        <div class="total-tax" id="totalTax"></div>
+        <div class="buttons">
+            <button id="addCalculator">계산기 추가</button>
+            <button id="resetAll">모두 초기화</button>
+        </div>
     </div>
 
     <script>
@@ -546,7 +730,7 @@
 
             calculator.querySelector('.marginalTaxRate').innerText = marginalTaxRate;
 
-            // 총 부담세액 업데이트
+            // 총 부담세액 데이트
             updateTotalTax();
         }
 
@@ -633,7 +817,7 @@
             // 계산기 컨테이너와 총 부담세액 요소를 임시 컨테이너에 복사
             tempContainer.innerHTML = container.outerHTML + totalTaxElement.outerHTML;
 
-            // 스타일 복사 및 입력 필드 텍스트 정렬 스타일 추가
+            // 스타일 복사 및 입 필드 텍스트 정렬 스타일 추가
             const styles = document.getElementsByTagName('style');
             for (let i = 0; i < styles.length; i++) {
                 tempContainer.insertAdjacentHTML('afterbegin', styles[i].outerHTML);
@@ -652,7 +836,7 @@
             // 임시 컨테이너를 body에 추가
             document.body.appendChild(tempContainer);
 
-            // 임시 컨테이너 내의 모든 입력 필드와 선택 요소 값을 업데이트
+            // 임시 컨테이너 내의 모 입력 필드와 선택 ���소 값을 업��이트
             tempContainer.querySelectorAll('input, select').forEach((element, index) => {
                 const originalElement = container.querySelectorAll('input, select')[index];
                 if (element.tagName === 'SELECT') {
@@ -701,11 +885,142 @@
             }, 500); // 0.5초 지연
         }
 
+        let historyCounter = 1;
+
+        // 페이지 로드 시 히스토리 불러오기
+        window.addEventListener('load', loadHistoryFromStorage);
+
+        function toggleHistoryPanel() {
+            const historyPanel = document.getElementById('historyPanel');
+            const mainContent = document.querySelector('.main-content');
+            historyPanel.classList.toggle('open');
+            if (historyPanel.classList.contains('open')) {
+                mainContent.style.marginLeft = '250px';
+            } else {
+                mainContent.style.marginLeft = '50px';
+            }
+        }
+
+        function saveCalculation(isNewSave = false) {
+            const calculators = document.querySelectorAll('.calculator');
+            const calculations = Array.from(calculators).map(calc => {
+                return {
+                    type: calc.querySelector('h2').textContent.includes('종합소득세') ? 'income' : 'gift',
+                    inputs: Array.from(calc.querySelectorAll('input, select')).reduce((acc, input) => {
+                        acc[input.className] = input.value;
+                        return acc;
+                    }, {}),
+                    results: Array.from(calc.querySelectorAll('.result-value span')).reduce((acc, span) => {
+                        acc[span.className] = span.textContent;
+                        return acc;
+                    }, {})
+                };
+            });
+
+            const date = new Date();
+            const dateString = `${String(date.getFullYear()).slice(2)}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
+            
+            // 계산기 타입에 따라 제목 설정
+            const calculatorType = calculations[0].type === 'income' ? '소득세' : '증여세';
+            let title = isNewSave ? `${calculatorType}_${dateString}${String(historyCounter++).padStart(2, '0')}` : `${calculatorType}_${dateString}01`;
+
+            const historyItem = {
+                title: title,
+                calculations: calculations,
+                date: new Date().toISOString()
+            };
+
+            addHistoryItemToPanel(historyItem);
+            saveHistoryToStorage();
+        }
+
+        function addHistoryItemToPanel(historyItem) {
+            const historyItemElement = document.createElement('div');
+            historyItemElement.className = 'history-item';
+            historyItemElement.dataset.calculations = JSON.stringify(historyItem.calculations);
+            historyItemElement.dataset.date = historyItem.date;
+            historyItemElement.innerHTML = `
+                <h3 contenteditable="true">${historyItem.title}</h3>
+                <button class="delete-history">삭제</button>
+            `;
+            historyItemElement.querySelector('.delete-history').addEventListener('click', function(event) {
+                event.stopPropagation();
+                if (confirm('이 히스토리를 삭제하시겠습니까?')) {
+                    historyItemElement.remove();
+                    saveHistoryToStorage();
+                }
+            });
+            historyItemElement.addEventListener('click', function() {
+                loadCalculation(historyItem.calculations);
+            });
+
+            historyItemElement.querySelector('h3').addEventListener('blur', function() {
+                historyItem.title = this.textContent;
+                saveHistoryToStorage();
+            });
+
+            document.getElementById('historyItems').appendChild(historyItemElement);
+        }
+
+        function saveHistoryToStorage() {
+            const historyItems = Array.from(document.querySelectorAll('.history-item')).map(item => {
+                return {
+                    title: item.querySelector('h3').textContent,
+                    calculations: JSON.parse(item.dataset.calculations),
+                    date: item.dataset.date
+                };
+            });
+            localStorage.setItem('taxCalculatorHistory', JSON.stringify(historyItems));
+        }
+
+        function loadHistoryFromStorage() {
+            const historyItems = JSON.parse(localStorage.getItem('taxCalculatorHistory')) || [];
+            document.getElementById('historyItems').innerHTML = ''; // 기존 항목 제거
+            historyItems.forEach(item => {
+                addHistoryItemToPanel(item);
+            });
+            // 마지막 저장된 historyCounter 값 복원
+            historyCounter = Math.max(...historyItems.map(item => {
+                const match = item.title.match(/\d+$/);
+                return match ? parseInt(match[0]) : 0;
+            }), 0) + 1;
+        }
+
+        function loadCalculation(calculations) {
+            const container = document.getElementById('calculatorContainer');
+            container.innerHTML = '';
+            calculations.forEach(calc => {
+                const calculator = calc.type === 'income' ? createIncomeCalculator() : createGiftCalculator();
+                Object.entries(calc.inputs).forEach(([className, value]) => {
+                    const input = calculator.querySelector(`.${className}`);
+                    if (input) input.value = value;
+                });
+                Object.entries(calc.results).forEach(([className, value]) => {
+                    const span = calculator.querySelector(`.${className}`);
+                    if (span) span.textContent = value;
+                });
+                container.appendChild(calculator);
+            });
+            updateTotalTax();
+        }
+
+        function newTable() {
+            if (confirm('새 테이블을 시작하시겠습니까? 현재의 계산 내용은 저장되지 않습니다.')) {
+                document.getElementById('calculatorContainer').innerHTML = '';
+                switchCalculatorType('income');
+                updateTotalTax();
+            }
+        }
+
         document.getElementById('incomeButton').addEventListener('click', () => switchCalculatorType('income'));
         document.getElementById('giftButton').addEventListener('click', () => switchCalculatorType('gift'));
         document.getElementById('addCalculator').addEventListener('click', addCalculator);
         document.getElementById('resetAll').addEventListener('click', resetAll);
         document.getElementById('screenshotButton').addEventListener('click', takeScreenshot);
+        document.getElementById('toggleHistory').addEventListener('click', toggleHistoryPanel);
+        document.getElementById('saveButton').addEventListener('click', () => saveCalculation());
+        document.getElementById('saveAsNew').addEventListener('click', () => saveCalculation(true));
+        document.getElementById('newTable').addEventListener('click', newTable);
 
         // 초기 계산기 추가
         switchCalculatorType('income');
