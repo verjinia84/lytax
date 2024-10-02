@@ -516,9 +516,7 @@
 
             const titleElement = calculator.querySelector('h2');
             titleElement.contentEditable = true;
-            titleElement.addEventListener('blur', function() {
-                saveCalculation();
-            });
+            // 자동 저장 이벤트 리스너 제거
 
             return calculator;
         }
@@ -600,9 +598,7 @@
 
             const titleElement = calculator.querySelector('h2');
             titleElement.contentEditable = true;
-            titleElement.addEventListener('blur', function() {
-                saveCalculation();
-            });
+            // 자동 저장 이벤트 리스너 제거
 
             return calculator;
         }
@@ -848,7 +844,7 @@
             // 임시 컨테이너를 body에 추가
             document.body.appendChild(tempContainer);
 
-            // 임시 컨테이��� 내의 모 입력 필드와 선택 소 값을 업이트
+            // 임시 컨테이 내의 모 입력 필드와 선택 소 값을 업이트
             tempContainer.querySelectorAll('input, select').forEach((element, index) => {
                 const originalElement = container.querySelectorAll('input, select')[index];
                 if (element.tagName === 'SELECT') {
@@ -885,7 +881,7 @@
                     // 임시 컨테이너 제거
                     document.body.removeChild(tempContainer);
 
-                    // 원래 스크롤 위치로 복원
+                    // 원래 스크롤 위치로 원
                     window.scrollTo(0, scrollPos);
 
                     // 캔버스를 이미지로 변환하여 다운로드
@@ -898,6 +894,7 @@
         }
 
         let historyCounter = 1;
+        let currentHistoryItem = null; // 현재 열려있는 히스토리 항목을 추적
 
         // 페이지 로드 시 히스토리 불러오기
         window.addEventListener('load', loadHistoryFromStorage);
@@ -913,9 +910,31 @@
             }
         }
 
+        function getUniqueHistoryCode() {
+            const date = new Date();
+            const dateString = `${String(date.getFullYear()).slice(2)}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
+            
+            // 현재 날짜의 모든 히스토리 항목을 가져옵니다.
+            const historyItems = JSON.parse(localStorage.getItem('taxCalculatorHistory')) || [];
+            const todayItems = historyItems.filter(item => item.title.includes(dateString));
+            
+            // 오늘 날짜의 가장 큰 코드 번호를 찾습니다.
+            let maxCode = 0;
+            todayItems.forEach(item => {
+                const codeMatch = item.title.match(/(\d{6})(\d{2})$/);
+                if (codeMatch && codeMatch[1] === dateString) {
+                    const code = parseInt(codeMatch[2]);
+                    if (code > maxCode) maxCode = code;
+                }
+            });
+            
+            // 다음 코드 번호를 반환합니다.
+            return String(maxCode + 1).padStart(2, '0');
+        }
+
         function saveCalculation(isNewSave = false) {
             const activeCalculator = document.querySelector('.calculator:last-child');
-            if (!activeCalculator) return;  // 활성화된 계산기가 없으면 함수 종료
+            if (!activeCalculator) return;
 
             const calculation = {
                 type: activeCalculator.querySelector('h2').textContent.includes('종합소득세') ? 'income' : 'gift',
@@ -930,20 +949,37 @@
                 }, {})
             };
 
-            const date = new Date();
-            const dateString = `${String(date.getFullYear()).slice(2)}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
-            
-            const calculatorType = calculation.type === 'income' ? '소득세' : '증여세';
-            let title = isNewSave ? `${calculatorType}_${dateString}${String(historyCounter++).padStart(2, '0')}` : `${calculatorType}_${dateString}01`;
+            if (currentHistoryItem && !isNewSave) {
+                // 기존 히스토리 항목 업데이트
+                currentHistoryItem.calculations = [calculation];
+                updateHistoryItemInPanel(currentHistoryItem);
+            } else {
+                // 새 히스토리 항목 생성
+                const date = new Date();
+                const dateString = `${String(date.getFullYear()).slice(2)}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
+                const calculatorType = calculation.type === 'income' ? '소득세' : '증여세';
+                const uniqueCode = getUniqueHistoryCode();
+                let title = `${calculatorType}_${dateString}${uniqueCode}`;
 
-            const historyItem = {
-                title: title,
-                calculations: [calculation],  // 단일 계산기만 저장
-                date: new Date().toISOString()
-            };
+                const newHistoryItem = {
+                    title: title,
+                    calculations: [calculation],
+                    date: new Date().toISOString()
+                };
 
-            addHistoryItemToPanel(historyItem);
+                addHistoryItemToPanel(newHistoryItem);
+                currentHistoryItem = newHistoryItem;
+            }
+
             saveHistoryToStorage();
+        }
+
+        function updateHistoryItemInPanel(historyItem) {
+            const historyItemElement = document.querySelector(`.history-item[data-date="${historyItem.date}"]`);
+            if (historyItemElement) {
+                historyItemElement.dataset.calculations = JSON.stringify(historyItem.calculations);
+                historyItemElement.querySelector('h3').textContent = historyItem.title;
+            }
         }
 
         function addHistoryItemToPanel(historyItem) {
@@ -959,11 +995,15 @@
                 event.stopPropagation();
                 if (confirm('이 히스토리를 삭제하시겠습니까?')) {
                     historyItemElement.remove();
+                    if (currentHistoryItem && currentHistoryItem.date === historyItem.date) {
+                        currentHistoryItem = null;
+                    }
                     saveHistoryToStorage();
                 }
             });
             historyItemElement.addEventListener('click', function() {
                 loadCalculation(historyItem.calculations);
+                currentHistoryItem = historyItem;
             });
 
             historyItemElement.querySelector('h3').addEventListener('blur', function() {
@@ -1034,7 +1074,7 @@
         document.getElementById('resetAll').addEventListener('click', resetAll);
         document.getElementById('screenshotButton').addEventListener('click', takeScreenshot);
         document.getElementById('toggleHistory').addEventListener('click', toggleHistoryPanel);
-        document.getElementById('saveButton').addEventListener('click', () => saveCalculation());
+        document.getElementById('saveButton').addEventListener('click', () => saveCalculation(false));
         document.getElementById('saveAsNew').addEventListener('click', () => saveCalculation(true));
         document.getElementById('newTable').addEventListener('click', newTable);
 
