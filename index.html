@@ -687,7 +687,7 @@
             const customDeduction = unformatNumber(calculator.querySelector('.giftDeductionCustom').value);
             const isGenerationSkipping = calculator.querySelector('.generationSkipping').checked;
             
-            if (customDeduction > 0) {
+            if (calculator.querySelector('.giftDeductionCustom').value !== '') {
                 giftDeduction = customDeduction;
             }
             
