@@ -418,6 +418,13 @@
             border-radius: 3px;
             cursor: pointer;
         }
+
+        .fee-center {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 300px;
+        }
     </style>
 </head>
 <body>
@@ -434,6 +441,7 @@
         <div class="calculator-type-buttons">
             <button id="incomeButton" class="calculator-type-button active">2024년 종합소득세 계산기</button>
             <button id="giftButton" class="calculator-type-button">증여세 계산기</button>
+            <button id="feeButton" class="calculator-type-button">조정료 계산기</button>
             <button id="screenshotButton" class="calculator-type-button">스크린샷</button>
             <div class="dropdown">
                 <button id="saveButton" class="calculator-type-button">저장</button>
@@ -442,657 +450,481 @@
                 </div>
             </div>
         </div>
-        <div class="calculator-container" id="calculatorContainer"></div>
-        <div class="total-tax" id="totalTax"></div>
-        <div class="buttons">
-            <button id="addCalculator">계산기 추가</button>
-            <button id="resetAll">모두 초기화</button>
+        <div id="incomeCalculatorSection">
+            <div class="calculator-container" id="calculatorContainer"></div>
+            <div class="total-tax" id="totalTax"></div>
+            <div class="buttons">
+                <button id="addCalculator">계산기 추가</button>
+                <button id="resetAll">모두 초기화</button>
+            </div>
         </div>
+        <div id="feeCalculatorSection" class="fee-center" style="display:none;">
+            <div class="calculator" id="feeCalculator">
+                <h2>수수료 계산기</h2>
+                <label for="typeSelect">구분</label>
+                <select id="typeSelect">
+                    <option value="개인">개인</option>
+                    <option value="법인">법인</option>
+                </select>
+                <label for="bizSelect">업종</label>
+                <select id="bizSelect">
+                    <option value="서비스">서비스</option>
+                    <option value="요식업">요식업</option>
+                    <option value="도소매">도소매</option>
+                    <option value="의료업">의료업</option>
+                    <option value="신고대리">신고대리</option>
+                </select>
+                <label for="amountInput">매출액(원)</label>
+                <input type="text" id="amountInput" placeholder="예: 1,000,000,000">
+                <div id="baseFeePreview" style="margin:6px 0 10px 0; color:#2980b9; font-weight:bold;"></div>
+                <label for="addRateInput">가산 비율(%)</label>
+                <input type="text" id="addRateInput" placeholder="예: 10">
+                <label for="addAmountInput">직접 가산 금액(원)</label>
+                <input type="text" id="addAmountInput" placeholder="예: 200,000">
+                <label for="discountInput">할인 금액(원)</label>
+                <input type="text" id="discountInput" placeholder="예: 100,000">
+                <button id="calcFeeBtn">계산</button>
+                <div class="result" id="feeResult"></div>
+            </div>
+        </div>
+        <div id="baseFeePreview" style="margin:6px 0 10px 0; color:#2980b9; font-weight:bold;"></div>
     </div>
 
     <script>
-        function formatNumber(num) {
-            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-        }
+    // ------------------ 공통 유틸 ------------------
+    function formatNumber(num) {
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+    function unformatNumber(str) {
+        return parseFloat((str || "0").toString().replace(/,/g, '')) || 0;
+    }
 
-        function unformatNumber(str) {
-            return parseFloat(str.replace(/,/g, '')) || 0;
-        }
-
-        function createIncomeCalculator() {
-            const calculator = document.createElement('div');
-            calculator.className = 'calculator';
-            calculator.innerHTML = `
-                <h2 contenteditable="true">2024년 종합소득세 계산</h2>
-                <label for="monthlyIncome">월 소득 (원):</label>
-                <input type="text" class="monthlyIncome" placeholder="월 소득을 입력하세요">
-                <label for="monthMultiplier">곱할 개월 수:</label>
-                <input type="text" class="monthMultiplier" value="12">
-                <label for="businessIncome">사업소득 (원):</label>
-                <input type="text" class="businessIncome" placeholder="금액을 입력하세요">
-                <label for="incomeDeduction">소득공제 (원):</label>
-                <input type="text" class="incomeDeduction" value="1,500,000">
-                <div class="result">
-                    <div class="result-row">
-                        <span class="result-label">과세표준:</span>
-                        <span class="result-value"><span class="taxableIncome">0</span> 원</span>
-                    </div>
-                    <div class="result-row">
-                        <span class="result-label">산출세액:</span>
-                        <span class="result-value"><span class="calculatedTax">0</span> 원</span>
-                    </div>
-                    <div class="result-row">
-                        <span class="result-label">한계세율:</span>
-                        <span class="result-value"><span class="marginalTaxRate">0</span> %</span>
-                    </div>
+    // ------------------ 종합소득세 계산기 ------------------
+    function createIncomeCalculator() {
+        const calculator = document.createElement('div');
+        calculator.className = 'calculator';
+        calculator.innerHTML = `
+            <h2 contenteditable="true">2024년 종합소득세 계산</h2>
+            <label>월 소득 (원):</label>
+            <input type="text" class="monthlyIncome" placeholder="월 소득을 입력하세요">
+            <label>곱할 개월 수:</label>
+            <input type="text" class="monthMultiplier" value="12">
+            <label>사업소득 (원):</label>
+            <input type="text" class="businessIncome" placeholder="금액을 입력하세요">
+            <label>소득공제 (원):</label>
+            <input type="text" class="incomeDeduction" value="1,500,000">
+            <div class="result">
+                <div class="result-row">
+                    <span class="result-label">과세표준:</span>
+                    <span class="result-value"><span class="taxableIncome">0</span> 원</span>
                 </div>
-                <label for="taxCreditReduction">세액공제 (원):</label>
-                <input type="text" class="taxCreditReduction" value="70,000">
-                <div class="result">
-                    <div class="result-row">
-                        <span class="result-label">최종 납부세액:</span>
-                        <span class="result-value"><span class="finalTax">0</span> 원</span>
-                    </div>
-                    <div class="result-row">
-                        <span class="result-label">최저한세:</span>
-                        <span class="result-value"><span class="minimumTax">0</span> 원</span>
-                    </div>
-                    <div class="result-row">
-                        <span class="result-label">추가 필요 세액공제:</span>
-                        <span class="result-value"><span class="additionalTaxCredit">0</span> 원</span>
-                    </div>
+                <div class="result-row">
+                    <span class="result-label">산출세액:</span>
+                    <span class="result-value"><span class="calculatedTax">0</span> 원</span>
                 </div>
-            `;
-
-            calculator.querySelectorAll('input').forEach(input => {
-                input.addEventListener('input', function() {
-                    updateInputFormat(this);
-                    if (this.classList.contains('monthlyIncome') || this.classList.contains('monthMultiplier')) {
-                        calculateYearlyIncome(calculator);
-                    }
-                    calculateIncomeTax(calculator);
-                });
+                <div class="result-row">
+                    <span class="result-label">한계세율:</span>
+                    <span class="result-value"><span class="marginalTaxRate">0</span> %</span>
+                </div>
+            </div>
+            <label>세액공제 (원):</label>
+            <input type="text" class="taxCreditReduction" value="70,000">
+            <div class="result">
+                <div class="result-row">
+                    <span class="result-label">최종 납부세액:</span>
+                    <span class="result-value"><span class="finalTax">0</span> 원</span>
+                </div>
+                <div class="result-row">
+                    <span class="result-label">최저한세:</span>
+                    <span class="result-value"><span class="minimumTax">0</span> 원</span>
+                </div>
+                <div class="result-row">
+                    <span class="result-label">추가 필요 세액공제:</span>
+                    <span class="result-value"><span class="additionalTaxCredit">0</span> 원</span>
+                </div>
+            </div>
+        `;
+        calculator.querySelectorAll('input').forEach(input => {
+            input.addEventListener('input', function() {
+                updateInputFormat(this);
+                if (this.classList.contains('monthlyIncome') || this.classList.contains('monthMultiplier')) {
+                    calculateYearlyIncome(calculator);
+                }
+                calculateIncomeTax(calculator);
             });
-
-            const titleElement = calculator.querySelector('h2');
-            titleElement.contentEditable = true;
-            // 자동 저장 이벤트 리스너 제거
-
-            return calculator;
+        });
+        return calculator;
+    }
+    function updateInputFormat(input) {
+        let value = unformatNumber(input.value);
+        input.value = formatNumber(value);
+    }
+    function calculateYearlyIncome(calculator) {
+        const monthlyIncome = unformatNumber(calculator.querySelector('.monthlyIncome').value);
+        const monthMultiplier = unformatNumber(calculator.querySelector('.monthMultiplier').value);
+        const yearlyIncome = monthlyIncome * monthMultiplier;
+        calculator.querySelector('.businessIncome').value = formatNumber(yearlyIncome);
+    }
+    function calculateIncomeTax(calculator) {
+        const businessIncome = unformatNumber(calculator.querySelector('.businessIncome').value);
+        const incomeDeduction = unformatNumber(calculator.querySelector('.incomeDeduction').value);
+        const taxCreditReduction = unformatNumber(calculator.querySelector('.taxCreditReduction').value);
+        const taxableIncome = Math.max(0, businessIncome - incomeDeduction);
+        calculator.querySelector('.taxableIncome').innerText = formatNumber(taxableIncome);
+        let calculatedTax = 0;
+        if (taxableIncome <= 14000000) {
+            calculatedTax = taxableIncome * 0.06;
+        } else if (taxableIncome <= 50000000) {
+            calculatedTax = 14000000 * 0.06 + (taxableIncome - 14000000) * 0.15;
+        } else if (taxableIncome <= 88000000) {
+            calculatedTax = 14000000 * 0.06 + 36000000 * 0.15 + (taxableIncome - 50000000) * 0.24;
+        } else if (taxableIncome <= 150000000) {
+            calculatedTax = 14000000 * 0.06 + 36000000 * 0.15 + 38000000 * 0.24 + (taxableIncome - 88000000) * 0.35;
+        } else if (taxableIncome <= 300000000) {
+            calculatedTax = 14000000 * 0.06 + 36000000 * 0.15 + 38000000 * 0.24 + 62000000 * 0.35 + (taxableIncome - 150000000) * 0.38;
+        } else if (taxableIncome <= 500000000) {
+            calculatedTax = 14000000 * 0.06 + 36000000 * 0.15 + 38000000 * 0.24 + 62000000 * 0.35 + 150000000 * 0.38 + (taxableIncome - 300000000) * 0.40;
+        } else if (taxableIncome <= 1000000000) {
+            calculatedTax = 14000000 * 0.06 + 36000000 * 0.15 + 38000000 * 0.24 + 62000000 * 0.35 + 150000000 * 0.38 + 200000000 * 0.40 + (taxableIncome - 500000000) * 0.42;
+        } else {
+            calculatedTax = 14000000 * 0.06 + 36000000 * 0.15 + 38000000 * 0.24 + 62000000 * 0.35 + 150000000 * 0.38 + 200000000 * 0.40 + 500000000 * 0.42 + (taxableIncome - 1000000000) * 0.45;
         }
+        calculator.querySelector('.calculatedTax').innerText = formatNumber(Math.round(calculatedTax));
+        const finalTax = Math.max(0, calculatedTax - taxCreditReduction);
+        calculator.querySelector('.finalTax').innerText = formatNumber(Math.round(finalTax));
+        let minimumTax = 0;
+        if (calculatedTax <= 30000000) {
+            minimumTax = calculatedTax * 0.35;
+        } else {
+            minimumTax = 30000000 * 0.35 + (calculatedTax - 30000000) * 0.45;
+        }
+        calculator.querySelector('.minimumTax').innerText = formatNumber(Math.round(minimumTax));
+        const additionalTaxCredit = Math.max(0, finalTax - minimumTax);
+        calculator.querySelector('.additionalTaxCredit').innerText = formatNumber(Math.round(additionalTaxCredit));
+        let marginalTaxRate = 0;
+        if (taxableIncome <= 14000000) marginalTaxRate = 6;
+        else if (taxableIncome <= 50000000) marginalTaxRate = 15;
+        else if (taxableIncome <= 88000000) marginalTaxRate = 24;
+        else if (taxableIncome <= 150000000) marginalTaxRate = 35;
+        else if (taxableIncome <= 300000000) marginalTaxRate = 38;
+        else if (taxableIncome <= 500000000) marginalTaxRate = 40;
+        else if (taxableIncome <= 1000000000) marginalTaxRate = 42;
+        else marginalTaxRate = 45;
+        calculator.querySelector('.marginalTaxRate').innerText = marginalTaxRate;
+    }
 
-        function createGiftCalculator() {
-            const calculator = document.createElement('div');
-            calculator.className = 'calculator';
-            calculator.innerHTML = `
-                <h2 contenteditable="true">증여세 계산</h2>
-                <label for="giftAmount">증여재산가액 (원):</label>
-                <input type="text" class="giftAmount" placeholder="증여재산가액을 입력하세요">
-                <label for="previousGift">사전증여재산 (원):</label>
-                <input type="text" class="previousGift" placeholder="사전증여재산을 입력하세요">
-                <label for="giftDeduction">증여재산공제 (원):</label>
-                <div class="gift-deduction-container">
-                    <select class="giftDeduction">
-                        <option value="10000000">10,000,000</option>
-                        <option value="20000000">20,000,000</option>  <!-- 새로운 옵션 추가 -->
-                        <option value="50000000">50,000,000</option>
-                        <option value="600000000">600,000,000</option>
-                    </select>
-                    <input type="text" class="giftDeductionCustom" placeholder="직접 입력">
+    // ------------------ 증여세 계산기 ------------------
+    function createGiftCalculator() {
+        const calculator = document.createElement('div');
+        calculator.className = 'calculator';
+        const uniqueId = 'generationSkipping_' + Date.now() + Math.floor(Math.random()*1000);
+        calculator.innerHTML = `
+            <h2 contenteditable="true">증여세 계산</h2>
+            <label>증여재산가액 (원):</label>
+            <input type="text" class="giftAmount" placeholder="증여재산가액을 입력하세요">
+            <label>사전증여재산 (원):</label>
+            <input type="text" class="previousGift" placeholder="사전증여재산을 입력하세요">
+            <label>증여재산공제 (원):</label>
+            <div class="gift-deduction-container">
+                <select class="giftDeduction">
+                    <option value="10000000">10,000,000</option>
+                    <option value="20000000">20,000,000</option>
+                    <option value="50000000">50,000,000</option>
+                    <option value="600000000">600,000,000</option>
+                </select>
+                <input type="text" class="giftDeductionCustom" placeholder="직접 입력">
+            </div>
+            <div class="checkbox-container">
+                <input type="checkbox" id="${uniqueId}" class="generationSkipping">
+                <label for="${uniqueId}">세대할증</label>
+            </div>
+            <div class="result">
+                <div class="result-row">
+                    <span class="result-label">증여세 과세표준:</span>
+                    <span class="result-value"><span class="taxableGift">0</span> 원</span>
                 </div>
-                <div class="checkbox-container">
-                    <input type="checkbox" id="generationSkipping_${Date.now()}" class="generationSkipping">
-                    <label for="generationSkipping_${Date.now()}">세대할증</label>
+                <div class="result-row">
+                    <span class="result-label">산출세액:</span>
+                    <span class="result-value"><span class="calculatedTax">0</span> 원</span>
                 </div>
-                <div class="result">
-                    <div class="result-row">
-                        <span class="result-label">증여세 과세표준:</span>
-                        <span class="result-value"><span class="taxableGift">0</span> 원</span>
-                    </div>
-                    <div class="result-row">
-                        <span class="result-label">산출세액:</span>
-                        <span class="result-value"><span class="calculatedTax">0</span> 원</span>
-                    </div>
-                    <div class="result-row">
-                        <span class="result-label">한계세율:</span>
-                        <span class="result-value"><span class="marginalTaxRate">0</span> %</span>
-                    </div>
+                <div class="result-row">
+                    <span class="result-label">한계세율:</span>
+                    <span class="result-value"><span class="marginalTaxRate">0</span> %</span>
                 </div>
-                <div class="result">
-                    <div class="result-row">
-                        <span class="result-label">신고세액공제:</span>
-                        <span class="result-value"><span class="taxCreditReduction">0</span> 원</span>
-                    </div>
-                    <div class="result-row">
-                        <span class="result-label">최종 납부세액:</span>
-                        <span class="result-value"><span class="finalTax">0</span> 원</span>
-                    </div>
+            </div>
+            <div class="result">
+                <div class="result-row">
+                    <span class="result-label">신고세액공제:</span>
+                    <span class="result-value"><span class="taxCreditReduction">0</span> 원</span>
                 </div>
-                <button class="delete-button">삭제</button>
-            `;
-
-            calculator.querySelectorAll('input, select').forEach(input => {
-                input.addEventListener('input', function() {
-                    if (this.type === 'text') {
-                        updateInputFormat(this);
-                    }
-                    calculateGiftTax(calculator);
-                });
-            });
-
-            const generationSkippingCheckbox = calculator.querySelector('.generationSkipping');
-            generationSkippingCheckbox.addEventListener('change', function() {
+                <div class="result-row">
+                    <span class="result-label">최종 납부세액:</span>
+                    <span class="result-value"><span class="finalTax">0</span> 원</span>
+                </div>
+            </div>
+            <button class="delete-button">삭제</button>
+        `;
+        calculator.querySelectorAll('input, select').forEach(input => {
+            input.addEventListener('input', function() {
+                if (this.type === 'text') updateInputFormat(this);
                 calculateGiftTax(calculator);
             });
-
-            // 라벨 클릭 이벤트 추가
-            const generationSkippingLabel = calculator.querySelector('label[for^="generationSkipping_"]');
-            generationSkippingLabel.addEventListener('click', function() {
-                setTimeout(() => calculateGiftTax(calculator), 0);
-            });
-
-            calculator.querySelector('.delete-button').addEventListener('click', function() {
-                calculator.remove();
-                updateTotalTax();
-            });
-
-            const titleElement = calculator.querySelector('h2');
-            titleElement.contentEditable = true;
-            // 자동 저장 이벤트 리스너 제거
-
-            return calculator;
-        }
-
-        function updateInputFormat(input) {
-            let value = unformatNumber(input.value);
-            input.value = formatNumber(value);
-        }
-
-        function calculateYearlyIncome(calculator) {
-            const monthlyIncome = unformatNumber(calculator.querySelector('.monthlyIncome').value);
-            const monthMultiplier = unformatNumber(calculator.querySelector('.monthMultiplier').value);
-            const yearlyIncome = monthlyIncome * monthMultiplier;
-            calculator.querySelector('.businessIncome').value = formatNumber(yearlyIncome);
-        }
-
-        function calculateIncomeTax(calculator) {
-            const businessIncome = unformatNumber(calculator.querySelector('.businessIncome').value);
-            const incomeDeduction = unformatNumber(calculator.querySelector('.incomeDeduction').value);
-            const taxCreditReduction = unformatNumber(calculator.querySelector('.taxCreditReduction').value);
-            
-            const taxableIncome = Math.max(0, businessIncome - incomeDeduction);
-            calculator.querySelector('.taxableIncome').innerText = formatNumber(taxableIncome);
-            
-            let calculatedTax = 0;
-            if (taxableIncome <= 14000000) {
-                calculatedTax = taxableIncome * 0.06;
-            } else if (taxableIncome <= 50000000) {
-                calculatedTax = 14000000 * 0.06 + (taxableIncome - 14000000) * 0.15;
-            } else if (taxableIncome <= 88000000) {
-                calculatedTax = 14000000 * 0.06 + 36000000 * 0.15 + (taxableIncome - 50000000) * 0.24;
-            } else if (taxableIncome <= 150000000) {
-                calculatedTax = 14000000 * 0.06 + 36000000 * 0.15 + 38000000 * 0.24 + (taxableIncome - 88000000) * 0.35;
-            } else if (taxableIncome <= 300000000) {
-                calculatedTax = 14000000 * 0.06 + 36000000 * 0.15 + 38000000 * 0.24 + 62000000 * 0.35 + (taxableIncome - 150000000) * 0.38;
-            } else if (taxableIncome <= 500000000) {
-                calculatedTax = 14000000 * 0.06 + 36000000 * 0.15 + 38000000 * 0.24 + 62000000 * 0.35 + 150000000 * 0.38 + (taxableIncome - 300000000) * 0.40;
-            } else if (taxableIncome <= 1000000000) {
-                calculatedTax = 14000000 * 0.06 + 36000000 * 0.15 + 38000000 * 0.24 + 62000000 * 0.35 + 150000000 * 0.38 + 200000000 * 0.40 + (taxableIncome - 500000000) * 0.42;
-            } else {
-                calculatedTax = 14000000 * 0.06 + 36000000 * 0.15 + 38000000 * 0.24 + 62000000 * 0.35 + 150000000 * 0.38 + 200000000 * 0.40 + 500000000 * 0.42 + (taxableIncome - 1000000000) * 0.45;
-            }
-            calculator.querySelector('.calculatedTax').innerText = formatNumber(Math.round(calculatedTax));
-            
-            const finalTax = Math.max(0, calculatedTax - taxCreditReduction);
-            calculator.querySelector('.finalTax').innerText = formatNumber(Math.round(finalTax));
-
-            // 최저한세 계산
-            let minimumTax = 0;
-            if (calculatedTax <= 30000000) {
-                minimumTax = calculatedTax * 0.35;
-            } else {
-                minimumTax = 30000000 * 0.35 + (calculatedTax - 30000000) * 0.45;
-            }
-            calculator.querySelector('.minimumTax').innerText = formatNumber(Math.round(minimumTax));
-
-            // 추가 필요 세액공제 계산
-            const additionalTaxCredit = Math.max(0, finalTax - minimumTax);
-            calculator.querySelector('.additionalTaxCredit').innerText = formatNumber(Math.round(additionalTaxCredit));
-
-            let marginalTaxRate = 0;
-            if (taxableIncome <= 14000000) {
-                marginalTaxRate = 6;
-            } else if (taxableIncome <= 50000000) {
-                marginalTaxRate = 15;
-            } else if (taxableIncome <= 88000000) {
-                marginalTaxRate = 24;
-            } else if (taxableIncome <= 150000000) {
-                marginalTaxRate = 35;
-            } else if (taxableIncome <= 300000000) {
-                marginalTaxRate = 38;
-            } else if (taxableIncome <= 500000000) {
-                marginalTaxRate = 40;
-            } else if (taxableIncome <= 1000000000) {
-                marginalTaxRate = 42;
-            } else {
-                marginalTaxRate = 45;
-            }
-            calculator.querySelector('.marginalTaxRate').innerText = marginalTaxRate;
-        }
-
-        function calculateGiftTax(calculator) {
-            const giftAmount = unformatNumber(calculator.querySelector('.giftAmount').value);
-            const previousGift = unformatNumber(calculator.querySelector('.previousGift').value);
-            let giftDeduction = unformatNumber(calculator.querySelector('.giftDeduction').value);
-            const customDeduction = unformatNumber(calculator.querySelector('.giftDeductionCustom').value);
-            const isGenerationSkipping = calculator.querySelector('.generationSkipping').checked;
-            
-            if (calculator.querySelector('.giftDeductionCustom').value !== '') {
-                giftDeduction = customDeduction;
-            }
-            
-            const taxableGift = Math.max(0, giftAmount + previousGift - giftDeduction);
-            calculator.querySelector('.taxableGift').innerText = formatNumber(taxableGift);
-            
-            let calculatedTax = 0;
-            if (taxableGift <= 100000000) {
-                calculatedTax = taxableGift * 0.10;
-            } else if (taxableGift <= 500000000) {
-                calculatedTax = 10000000 + (taxableGift - 100000000) * 0.20;
-            } else if (taxableGift <= 1000000000) {
-                calculatedTax = 90000000 + (taxableGift - 500000000) * 0.30;
-            } else if (taxableGift <= 3000000000) {
-                calculatedTax = 240000000 + (taxableGift - 1000000000) * 0.40;
-            } else {
-                calculatedTax = 1040000000 + (taxableGift - 3000000000) * 0.50;
-            }
-
-            if (isGenerationSkipping) {
-                calculatedTax *= 1.3; // 세대할증 30% 적용
-            }
-
-            calculator.querySelector('.calculatedTax').innerText = formatNumber(Math.round(calculatedTax));
-
-            const taxCreditReduction = calculatedTax * 0.03;
-            calculator.querySelector('.taxCreditReduction').innerText = formatNumber(Math.round(taxCreditReduction));
-
-            const finalTax = Math.max(0, calculatedTax - taxCreditReduction);
-            calculator.querySelector('.finalTax').innerText = formatNumber(Math.round(finalTax));
-
-            let marginalTaxRate = 0;
-            if (taxableGift <= 100000000) {
-                marginalTaxRate = 10;
-            } else if (taxableGift <= 500000000) {
-                marginalTaxRate = 20;
-            } else if (taxableGift <= 1000000000) {
-                marginalTaxRate = 30;
-            } else if (taxableGift <= 3000000000) {
-                marginalTaxRate = 40;
-            } else {
-                marginalTaxRate = 50;
-            }
-
-            if (isGenerationSkipping) {
-                marginalTaxRate = Math.min(marginalTaxRate * 1.3, 50); // 세대할증 30% 적용, 최대 50%
-            }
-
-            calculator.querySelector('.marginalTaxRate').innerText = marginalTaxRate;
-
-            // 총 부담세액 데이트
+        });
+        calculator.querySelector('.generationSkipping').addEventListener('change', function() {
+            calculateGiftTax(calculator);
+        });
+        calculator.querySelector('label[for^="generationSkipping_"]').addEventListener('click', function() {
+            setTimeout(() => calculateGiftTax(calculator), 0);
+        });
+        calculator.querySelector('.delete-button').addEventListener('click', function() {
+            calculator.remove();
             updateTotalTax();
+        });
+        return calculator;
+    }
+    function calculateGiftTax(calculator) {
+        const giftAmount = unformatNumber(calculator.querySelector('.giftAmount').value);
+        const previousGift = unformatNumber(calculator.querySelector('.previousGift').value);
+        let giftDeduction = unformatNumber(calculator.querySelector('.giftDeduction').value);
+        const customDeduction = unformatNumber(calculator.querySelector('.giftDeductionCustom').value);
+        const isGenerationSkipping = calculator.querySelector('.generationSkipping').checked;
+        if (calculator.querySelector('.giftDeductionCustom').value !== '') {
+            giftDeduction = customDeduction;
         }
-
-        function updateTotalTax() {
-            const calculators = document.querySelectorAll('.calculator');
-            let totalTax = 0;
-            calculators.forEach(calc => {
-                const finalTaxElement = calc.querySelector('.finalTax');
-                if (finalTaxElement) {
-                    totalTax += unformatNumber(finalTaxElement.innerText);
-                }
-            });
-            document.getElementById('totalTax').innerText = `총 부담세액: ${formatNumber(Math.round(totalTax))} 원`;
+        const taxableGift = Math.max(0, giftAmount + previousGift - giftDeduction);
+        calculator.querySelector('.taxableGift').innerText = formatNumber(taxableGift);
+        let calculatedTax = 0;
+        if (taxableGift <= 100000000) {
+            calculatedTax = taxableGift * 0.10;
+        } else if (taxableGift <= 500000000) {
+            calculatedTax = 10000000 + (taxableGift - 100000000) * 0.20;
+        } else if (taxableGift <= 1000000000) {
+            calculatedTax = 90000000 + (taxableGift - 500000000) * 0.30;
+        } else if (taxableGift <= 3000000000) {
+            calculatedTax = 240000000 + (taxableGift - 1000000000) * 0.40;
+        } else {
+            calculatedTax = 1040000000 + (taxableGift - 3000000000) * 0.50;
         }
-
-        function switchCalculatorType(type) {
-            const incomeButton = document.getElementById('incomeButton');
-            const giftButton = document.getElementById('giftButton');
-            const container = document.getElementById('calculatorContainer');
-
-            if (type === 'income') {
-                incomeButton.classList.add('active');
-                giftButton.classList.remove('active');
-            } else {
-                incomeButton.classList.remove('active');
-                giftButton.classList.add('active');
+        if (isGenerationSkipping) calculatedTax *= 1.3;
+        calculator.querySelector('.calculatedTax').innerText = formatNumber(Math.round(calculatedTax));
+        const taxCreditReduction = calculatedTax * 0.03;
+        calculator.querySelector('.taxCreditReduction').innerText = formatNumber(Math.round(taxCreditReduction));
+        const finalTax = Math.max(0, calculatedTax - taxCreditReduction);
+        calculator.querySelector('.finalTax').innerText = formatNumber(Math.round(finalTax));
+        let marginalTaxRate = 0;
+        if (taxableGift <= 100000000) marginalTaxRate = 10;
+        else if (taxableGift <= 500000000) marginalTaxRate = 20;
+        else if (taxableGift <= 1000000000) marginalTaxRate = 30;
+        else if (taxableGift <= 3000000000) marginalTaxRate = 40;
+        else marginalTaxRate = 50;
+        if (isGenerationSkipping) marginalTaxRate = Math.min(marginalTaxRate * 1.3, 50);
+        calculator.querySelector('.marginalTaxRate').innerText = marginalTaxRate;
+        updateTotalTax();
+    }
+    function updateTotalTax() {
+        const calculators = document.querySelectorAll('.calculator-container .calculator');
+        let totalTax = 0;
+        calculators.forEach(calc => {
+            const finalTaxElement = calc.querySelector('.finalTax');
+            if (finalTaxElement) {
+                totalTax += unformatNumber(finalTaxElement.innerText);
             }
+        });
+        document.getElementById('totalTax').innerText = `총 부담세액: ${formatNumber(Math.round(totalTax))} 원`;
+    }
 
+    // ------------------ 조정료(수수료) 계산기 ------------------
+    let rateTable = {};
+    async function loadRateTable() {
+        try {
+            const res = await fetch('요율표.csv');
+            const text = await res.text();
+            const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+            let isHeader = true;
+            for (let line of lines) {
+                if (isHeader) { isHeader = false; continue; }
+                const [구분, 업종, 수입금액, 요율, 베이스, 추가분, 합계] = line.split(',').map(x => (x||'').trim());
+                if (!rateTable[구분]) rateTable[구분] = {};
+                if (!rateTable[구분][업종]) rateTable[구분][업종] = [];
+                rateTable[구분][업종].push({
+                    수입금액: Number((수입금액||'').replace(/[^0-9]/g, '') || 0),
+                    요율: parseFloat((요율||'').replace('%','')) || 0,
+                    베이스: Number((베이스||'').replace(/[^0-9]/g, '') || 0),
+                    추가분: Number((추가분||'').replace(/[^0-9]/g, '') || 0),
+                    합계: Number((합계||'').replace(/[^0-9]/g, '') || 0)
+                });
+            }
+            for (const type in rateTable) {
+                for (const biz in rateTable[type]) {
+                    rateTable[type][biz].sort((a, b) => a.수입금액 - b.수입금액);
+                }
+            }
+        } catch (e) {
+            document.getElementById('feeResult').innerHTML = '요율표.csv를 불러올 수 없습니다.';
+        }
+    }
+    function formatNumberWithCommas(x) {
+        if (typeof x === 'number') x = x.toString();
+        return x.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+    function calcFee() {
+        const type = document.getElementById('typeSelect').value.trim();
+        const biz = document.getElementById('bizSelect').value.trim();
+        let amountRaw = document.getElementById('amountInput').value.replace(/[^\d]/g, '');
+        let amount = Number(amountRaw);
+        let addRate = parseFloat(document.getElementById('addRateInput').value.replace(/[^\d.\-]/g, '')) || 0;
+        let addAmount = Number(document.getElementById('addAmountInput').value.replace(/[^\d]/g, '')) || 0;
+        let discount = Number(document.getElementById('discountInput').value.replace(/[^\d]/g, '')) || 0;
+
+        if (!rateTable[type] || !rateTable[type][biz]) {
+            document.getElementById('feeResult').innerHTML = '요율표 정보가 없습니다.';
+            return;
+        }
+        if (!amount) {
+            document.getElementById('feeResult').innerHTML = '매출액을 입력하세요.';
+            return;
+        }
+        let rows = rateTable[type][biz];
+        let idx = 0;
+        for (let i = 0; i < rows.length; i++) {
+            if (amount >= rows[i].수입금액) idx = i;
+            else break;
+        }
+        let row = rows[idx];
+        let baseAmount = row.수입금액;
+        let fee = row.베이스 + (amount - baseAmount) * (row.요율 / 100);
+        fee = Math.round(fee/10)*10;
+        let addRateFee = Math.round(fee * (addRate/100)/10)*10;
+        let totalFee = fee + addRateFee + addAmount - discount;
+        let penalty = Math.round(totalFee * 0.1/10)*10;
+        let totalCharge = totalFee + penalty;
+        const formula = `${row.베이스.toLocaleString()} + (${amount.toLocaleString()} - ${baseAmount.toLocaleString()}) × ${row.요율.toFixed(2)}%`;
+
+        document.getElementById('feeResult').innerHTML =
+            `<div>매출액 기준 수수료: <b>${fee.toLocaleString()}원</b></div>`+
+            `<div>가산 비율 수수료: <b>${addRateFee.toLocaleString()}원</b></div>`+
+            `<div>직접입력 수수료: <b>${addAmount.toLocaleString()}원</b></div>`+
+            `<div>할인 금액: <b>${discount.toLocaleString()}원</b></div>`+
+            `<div style='margin-top:8px;'>총 수수료 금액: <b>${totalFee.toLocaleString()}원</b></div>`+
+            `<div>10% 가산세: <b>${penalty.toLocaleString()}원</b></div>`+
+            `<div style='font-size:1.1em;margin-top:8px;'>총 청구금액: <b>${totalCharge.toLocaleString()}원</b></div>`+
+            `<div style='font-size:13px;color:#888;margin-top:8px;'>계산식: (${formula}) + (${addRate}% 가산) + ${addAmount.toLocaleString()} - ${discount.toLocaleString()} + 10% 가산세</div>`;
+    }
+
+    // ------------------ 탭 전환 및 이벤트 ------------------
+    function showSection(section) {
+        document.getElementById('incomeCalculatorSection').style.display = (section === 'income' || section === 'gift') ? 'block' : 'none';
+        document.getElementById('feeCalculatorSection').style.display = (section === 'fee') ? 'block' : 'none';
+        document.getElementById('incomeButton').classList.toggle('active', section === 'income');
+        document.getElementById('giftButton').classList.toggle('active', section === 'gift');
+        document.getElementById('feeButton').classList.toggle('active', section === 'fee');
+        if (section === 'income') {
+            switchCalculatorType('income');
+        } else if (section === 'gift') {
+            switchCalculatorType('gift');
+        }
+    }
+    function switchCalculatorType(type) {
+        const container = document.getElementById('calculatorContainer');
+        if (type === 'income') {
             container.innerHTML = '';
-            if (type === 'income') {
-                container.appendChild(createIncomeCalculator());
-            } else {
-                container.appendChild(createGiftCalculator());
-            }
-
-            if (type === 'gift') {
-                document.getElementById('totalTax').style.display = 'block';
-            } else {
-                document.getElementById('totalTax').style.display = 'none';
-            }
-            updateTotalTax();
-        }
-
-        function addCalculator() {
-            const container = document.getElementById('calculatorContainer');
-            const activeButton = document.querySelector('.calculator-type-button.active');
-            const calculatorType = activeButton.id === 'incomeButton' ? 'income' : 'gift';
-            
-            if (calculatorType === 'income') {
-                container.appendChild(createIncomeCalculator());
-            } else {
-                container.appendChild(createGiftCalculator());
-                updateTotalTax();
-            }
-        }
-
-        function resetAll() {
-            const activeButton = document.querySelector('.calculator-type-button.active');
-            const calculatorType = activeButton.id === 'incomeButton' ? 'income' : 'gift';
-            switchCalculatorType(calculatorType);
-        }
-
-        // 스크린샷 기능 수정
-        function takeScreenshot() {
-            const container = document.getElementById('calculatorContainer');
-            const totalTaxElement = document.getElementById('totalTax');
-            
-            // 현재 스크롤 위치 저장
-            const scrollPos = window.pageYOffset;
-
-            // 임시 컨테이너 생성
-            const tempContainer = document.createElement('div');
-            tempContainer.style.cssText = `
-                position: absolute;
-                left: -9999px;
-                width: ${container.offsetWidth}px;
-                background-color: ${getComputedStyle(document.body).backgroundColor};
-                padding: 20px;
-                box-sizing: border-box;
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                color: ${getComputedStyle(document.body).color};
-            `;
-
-            // 계산기 컨테이너와 총 부담세액 요소를 임시 컨테이너에 복사
-            tempContainer.innerHTML = container.outerHTML + totalTaxElement.outerHTML;
-
-            // 스타일 복사 및 입 필드 텍스트 정렬 스타일 추가
-            const styles = document.getElementsByTagName('style');
-            for (let i = 0; i < styles.length; i++) {
-                tempContainer.insertAdjacentHTML('afterbegin', styles[i].outerHTML);
-            }
-            const alignStyle = document.createElement('style');
-            alignStyle.textContent = `
-                input[type="text"], select {
-                    padding-top: 5px !important;
-                    padding-bottom: 15px !important;
-                    line-height: 1.2 !important;
-                    transform: translateY(3px) !important;
-                }
-            `;
-            tempContainer.insertAdjacentElement('afterbegin', alignStyle);
-
-            // 임시 컨테이너를 body에 추가
-            document.body.appendChild(tempContainer);
-
-            // 임시 컨테이 내의 모 입력 필드와 선택 소 값을 업이트
-            tempContainer.querySelectorAll('input, select').forEach((element, index) => {
-                const originalElement = container.querySelectorAll('input, select')[index];
-                if (element.tagName === 'SELECT') {
-                    element.value = originalElement.value;
-                } else {
-                    element.value = originalElement.value;
-                }
-            });
-
-            // 임시 컨테이너 내의 계산 결과를 업데이트
-            tempContainer.querySelectorAll('.calculator').forEach((calc, index) => {
-                const originalCalc = container.querySelectorAll('.calculator')[index];
-                calc.querySelectorAll('.result-value span, .result span').forEach((span, i) => {
-                    const originalSpan = originalCalc.querySelectorAll('.result-value span, .result span')[i];
-                    span.innerText = originalSpan.innerText;
-                });
-            });
-
-            // 체크박스 상태 업데이트
-            tempContainer.querySelectorAll('input[type="checkbox"]').forEach((checkbox, index) => {
-                const originalCheckbox = container.querySelectorAll('input[type="checkbox"]')[index];
-                checkbox.checked = originalCheckbox.checked;
-            });
-
-            // 폰트 로딩을 위한 지연
-            setTimeout(() => {
-                html2canvas(tempContainer, {
-                    allowTaint: true,
-                    useCORS: true,
-                    height: tempContainer.scrollHeight,
-                    windowHeight: tempContainer.scrollHeight,
-                    scale: 2 // 해상도 증가
-                }).then(function(canvas) {
-                    // 임시 컨테이너 제거
-                    document.body.removeChild(tempContainer);
-
-                    // 원래 스크롤 위치로 원
-                    window.scrollTo(0, scrollPos);
-
-                    // 캔버스를 이미지로 변환하여 다운로드
-                    var link = document.createElement('a');
-                    link.download = '세금계산기_스크린샷.png';
-                    link.href = canvas.toDataURL();
-                    link.click();
-                });
-            }, 500); // 0.5초 지연
-        }
-
-        let historyCounter = 1;
-        let currentHistoryItem = null; // 현재 열려있는 히스토리 항목을 추적
-
-        // 페이지 로드 시 히스토리 불러오기
-        window.addEventListener('load', loadHistoryFromStorage);
-
-        function toggleHistoryPanel() {
-            const historyPanel = document.getElementById('historyPanel');
-            const mainContent = document.querySelector('.main-content');
-            historyPanel.classList.toggle('open');
-            if (historyPanel.classList.contains('open')) {
-                mainContent.style.marginLeft = '250px';
-            } else {
-                mainContent.style.marginLeft = '50px';
-            }
-        }
-
-        function getUniqueHistoryCode() {
-            const date = new Date();
-            const dateString = `${String(date.getFullYear()).slice(2)}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
-            
-            // 현재 날짜의 모든 히스토리 항목을 가져옵니다.
-            const historyItems = JSON.parse(localStorage.getItem('taxCalculatorHistory')) || [];
-            const todayItems = historyItems.filter(item => item.title.includes(dateString));
-            
-            // 오늘 날짜의 가장 큰 코드 번호를 찾습니다.
-            let maxCode = 0;
-            todayItems.forEach(item => {
-                const codeMatch = item.title.match(/(\d{6})(\d{2})$/);
-                if (codeMatch && codeMatch[1] === dateString) {
-                    const code = parseInt(codeMatch[2]);
-                    if (code > maxCode) maxCode = code;
-                }
-            });
-            
-            // 다음 코드 번호를 반환합니다.
-            return String(maxCode + 1).padStart(2, '0');
-        }
-
-        function saveCalculation(isNewSave = false) {
-            const calculators = document.querySelectorAll('.calculator');
-            if (calculators.length === 0) return;
-
-            const calculations = Array.from(calculators).map(calculator => ({
-                type: calculator.querySelector('h2').textContent.includes('종합소득세') ? 'income' : 'gift',
-                title: calculator.querySelector('h2').textContent,
-                inputs: Array.from(calculator.querySelectorAll('input, select')).reduce((acc, input) => {
-                    if (input.type === 'checkbox') {
-                        acc[input.className] = input.checked;
-                    } else {
-                        acc[input.className] = input.value;
-                    }
-                    return acc;
-                }, {}),
-                results: Array.from(calculator.querySelectorAll('.result-value span')).reduce((acc, span) => {
-                    acc[span.className] = span.textContent;
-                    return acc;
-                }, {})
-            }));
-
-            if (currentHistoryItem && !isNewSave) {
-                // 기존 히스토리 항목 업데이트
-                currentHistoryItem.calculations = calculations;
-                updateHistoryItemInPanel(currentHistoryItem);
-            } else {
-                // 새 히스토리 항목 생성
-                const date = new Date();
-                const dateString = `${String(date.getFullYear()).slice(2)}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
-                const calculatorType = calculations[0].type === 'income' ? '소득세' : '증여세';
-                const uniqueCode = getUniqueHistoryCode();
-                let title = `${calculatorType}_${dateString}${uniqueCode}`;
-
-                const newHistoryItem = {
-                    title: title,
-                    calculations: calculations,
-                    date: new Date().toISOString()
-                };
-
-                addHistoryItemToPanel(newHistoryItem);
-                currentHistoryItem = newHistoryItem;
-            }
-
-            saveHistoryToStorage();
-        }
-
-        function updateHistoryItemInPanel(historyItem) {
-            const historyItemElement = document.querySelector(`.history-item[data-date="${historyItem.date}"]`);
-            if (historyItemElement) {
-                historyItemElement.dataset.calculations = JSON.stringify(historyItem.calculations);
-                historyItemElement.querySelector('h3').textContent = historyItem.title;
-            }
-        }
-
-        function addHistoryItemToPanel(historyItem) {
-            const historyItemElement = document.createElement('div');
-            historyItemElement.className = 'history-item';
-            historyItemElement.dataset.calculations = JSON.stringify(historyItem.calculations);
-            historyItemElement.dataset.date = historyItem.date;
-            historyItemElement.innerHTML = `
-                <h3 contenteditable="true">${historyItem.title}</h3>
-                <button class="delete-history">삭제</button>
-            `;
-            historyItemElement.querySelector('.delete-history').addEventListener('click', function(event) {
-                event.stopPropagation();
-                if (confirm('이 히스토리를 삭제하시겠습니까?')) {
-                    historyItemElement.remove();
-                    if (currentHistoryItem && currentHistoryItem.date === historyItem.date) {
-                        currentHistoryItem = null;
-                    }
-                    saveHistoryToStorage();
-                }
-            });
-            historyItemElement.addEventListener('click', function() {
-                loadCalculation(historyItem.calculations);
-                currentHistoryItem = historyItem;
-            });
-
-            historyItemElement.querySelector('h3').addEventListener('blur', function() {
-                historyItem.title = this.textContent;
-                saveHistoryToStorage();
-            });
-
-            document.getElementById('historyItems').appendChild(historyItemElement);
-        }
-
-        function saveHistoryToStorage() {
-            const historyItems = Array.from(document.querySelectorAll('.history-item')).map(item => {
-                return {
-                    title: item.querySelector('h3').textContent,
-                    calculations: JSON.parse(item.dataset.calculations),
-                    date: item.dataset.date
-                };
-            });
-            localStorage.setItem('taxCalculatorHistory', JSON.stringify(historyItems));
-        }
-
-        function loadHistoryFromStorage() {
-            const historyItems = JSON.parse(localStorage.getItem('taxCalculatorHistory')) || [];
-            document.getElementById('historyItems').innerHTML = ''; // 기존 항목 제거
-            historyItems.forEach(item => {
-                addHistoryItemToPanel(item);
-            });
-            // 마지막 저장된 historyCounter 값 복원
-            historyCounter = Math.max(...historyItems.map(item => {
-                const match = item.title.match(/\d+$/);
-                return match ? parseInt(match[0]) : 0;
-            }), 0) + 1;
-        }
-
-        function loadCalculation(calculations) {
-            const container = document.getElementById('calculatorContainer');
+            container.appendChild(createIncomeCalculator());
+            document.getElementById('totalTax').style.display = 'none';
+        } else {
             container.innerHTML = '';
-            calculations.forEach(calc => {
-                const calculator = calc.type === 'income' ? createIncomeCalculator() : createGiftCalculator();
-                // 계산 테이블 제목 설정
-                calculator.querySelector('h2').textContent = calc.title;
-                Object.entries(calc.inputs).forEach(([className, value]) => {
-                    const input = calculator.querySelector(`.${className}`);
-                    if (input) {
-                        if (input.type === 'checkbox') {
-                            input.checked = value;
-                        } else {
-                            input.value = value;
-                        }
-                    }
-                });
-                Object.entries(calc.results).forEach(([className, value]) => {
-                    const span = calculator.querySelector(`.${className}`);
-                    if (span) span.textContent = value;
-                });
-                container.appendChild(calculator);
-                
-                // 세대할증 체크박스 상태에 따라 재계산
-                if (calc.type === 'gift') {
-                    calculateGiftTax(calculator);
-                }
-            });
+            container.appendChild(createGiftCalculator());
+            document.getElementById('totalTax').style.display = 'block';
+        }
+        updateTotalTax();
+    }
+    function addCalculator() {
+        const container = document.getElementById('calculatorContainer');
+        const activeButton = document.querySelector('.calculator-type-button.active');
+        const calculatorType = activeButton.id === 'incomeButton' ? 'income' : 'gift';
+        if (calculatorType === 'income') {
+            container.appendChild(createIncomeCalculator());
+        } else {
+            container.appendChild(createGiftCalculator());
             updateTotalTax();
         }
+    }
+    function resetAll() {
+        const activeButton = document.querySelector('.calculator-type-button.active');
+        const calculatorType = activeButton.id === 'incomeButton' ? 'income' : 'gift';
+        switchCalculatorType(calculatorType);
+    }
 
-        function newTable() {
-            if (confirm('새 테이블을 시작하시겠습니까? 현재의 계산 내용은 저장되지 않습니다.')) {
-                document.getElementById('calculatorContainer').innerHTML = '';
-                switchCalculatorType('income');
-                updateTotalTax();
-            }
+    function previewBaseFee() {
+        const type = document.getElementById('typeSelect').value.trim();
+        const biz = document.getElementById('bizSelect').value.trim();
+        let amountRaw = document.getElementById('amountInput').value.replace(/[^\d]/g, '');
+        let amount = Number(amountRaw);
+        if (!rateTable[type] || !rateTable[type][biz] || !amount) {
+            document.getElementById('baseFeePreview').innerText = '';
+            return;
         }
+        let rows = rateTable[type][biz];
+        let idx = 0;
+        for (let i = 0; i < rows.length; i++) {
+            if (amount >= rows[i].수입금액) idx = i;
+            else break;
+        }
+        let row = rows[idx];
+        let baseAmount = row.수입금액;
+        let fee = row.베이스 + (amount - baseAmount) * (row.요율 / 100);
+        fee = Math.round(fee/10)*10;
+        document.getElementById('baseFeePreview').innerText = `매출액 기준 수수료: ${fee.toLocaleString()}원`;
+    }
 
-        document.getElementById('incomeButton').addEventListener('click', () => switchCalculatorType('income'));
-        document.getElementById('giftButton').addEventListener('click', () => switchCalculatorType('gift'));
+    document.addEventListener('DOMContentLoaded', function() {
+        loadRateTable();
+        document.getElementById('incomeButton').addEventListener('click', () => showSection('income'));
+        document.getElementById('giftButton').addEventListener('click', () => showSection('gift'));
+        document.getElementById('feeButton').addEventListener('click', () => showSection('fee'));
         document.getElementById('addCalculator').addEventListener('click', addCalculator);
         document.getElementById('resetAll').addEventListener('click', resetAll);
-        document.getElementById('screenshotButton').addEventListener('click', takeScreenshot);
-        document.getElementById('toggleHistory').addEventListener('click', toggleHistoryPanel);
-        document.getElementById('saveButton').addEventListener('click', () => saveCalculation(false));
-        document.getElementById('saveAsNew').addEventListener('click', () => saveCalculation(true));
-        document.getElementById('newTable').addEventListener('click', newTable);
-
-        // 초기 계산기 추가
-        switchCalculatorType('income');
+        document.getElementById('calcFeeBtn').addEventListener('click', calcFee);
+        document.getElementById('amountInput').addEventListener('input', function() {
+            let value = this.value.replace(/[^\d]/g, '');
+            if (value) {
+                this.value = formatNumberWithCommas(value);
+            } else {
+                this.value = '';
+            }
+            calcFee();
+        });
+        document.getElementById('typeSelect').addEventListener('change', calcFee);
+        document.getElementById('bizSelect').addEventListener('change', calcFee);
+        document.getElementById('addRateInput').addEventListener('input', function() {
+            let value = this.value.replace(/[^\d.\-]/g, '');
+            if (value) {
+                this.value = value;
+            } else {
+                this.value = '';
+            }
+            calcFee();
+        });
+        document.getElementById('addAmountInput').addEventListener('input', function() {
+            let value = this.value.replace(/[^\d]/g, '');
+            if (value) {
+                this.value = formatNumberWithCommas(value);
+            } else {
+                this.value = '';
+            }
+            calcFee();
+        });
+        document.getElementById('discountInput').addEventListener('input', function() {
+            let value = this.value.replace(/[^\d]/g, '');
+            if (value) {
+                this.value = formatNumberWithCommas(value);
+            } else {
+                this.value = '';
+            }
+            calcFee();
+        });
+        // 초기화
+        showSection('income');
+    });
     </script>
 </body>
 </html>
