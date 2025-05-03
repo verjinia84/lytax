@@ -737,7 +737,7 @@
     let rateTable = {};
     async function loadRateTable() {
         try {
-            const res = await fetch('요율표.csv');
+            const res = await fetch('rate_table.csv');
             const text = await res.text();
             const lines = text.split('\n').map(l => l.trim()).filter(l => l);
             let isHeader = true;
