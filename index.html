@@ -484,7 +484,6 @@
                     <input type="text" id="addAmountInput" placeholder="예: 200,000">
                     <label for="discountInput">할인 금액(원)</label>
                     <input type="text" id="discountInput" placeholder="예: 100,000">
-                    <button id="calcFeeBtn">계산</button>
                     <div class="result" id="feeResult"></div>
                 </div>
             </div>
@@ -806,7 +805,7 @@
             `<div>매출액 기준 수수료: <b>${fee.toLocaleString()}원</b></div>`+
             `<div>가산 비율 수수료: <b>${addRateFee.toLocaleString()}원</b></div>`+
             `<div>직접입력 수수료: <b>${addAmount.toLocaleString()}원</b></div>`+
-            `<div>할인 금액: <b>${discount.toLocaleString()}원</b></div>`+
+            `<div style="color:#e74c3c;">할인 금액: <b>${discount.toLocaleString()}원</b></div>`+
             `<div style='margin-top:8px;'>총 수수료 금액: <b>${totalFee.toLocaleString()}원</b></div>`+
             `<div>10% 가산세: <b>${penalty.toLocaleString()}원</b></div>`+
             `<div style='font-size:1.1em;margin-top:8px;'>총 청구금액: <b>${totalCharge.toLocaleString()}원</b></div>`+
@@ -885,7 +884,6 @@
         document.getElementById('feeButton').addEventListener('click', () => showSection('fee'));
         document.getElementById('addCalculator').addEventListener('click', addCalculator);
         document.getElementById('resetAll').addEventListener('click', resetAll);
-        document.getElementById('calcFeeBtn').addEventListener('click', calcFee);
         document.getElementById('amountInput').addEventListener('input', function() {
             let value = this.value.replace(/[^\d]/g, '');
             if (value) {
