@@ -458,33 +458,35 @@
                 <button id="resetAll">모두 초기화</button>
             </div>
         </div>
-        <div id="feeCalculatorSection" class="fee-center" style="display:none;">
-            <div class="calculator" id="feeCalculator">
-                <h2>수수료 계산기</h2>
-                <label for="typeSelect">구분</label>
-                <select id="typeSelect">
-                    <option value="개인">개인</option>
-                    <option value="법인">법인</option>
-                </select>
-                <label for="bizSelect">업종</label>
-                <select id="bizSelect">
-                    <option value="서비스">서비스</option>
-                    <option value="요식업">요식업</option>
-                    <option value="도소매">도소매</option>
-                    <option value="의료업">의료업</option>
-                    <option value="신고대리">신고대리</option>
-                </select>
-                <label for="amountInput">매출액(원)</label>
-                <input type="text" id="amountInput" placeholder="예: 1,000,000,000">
-                <div id="baseFeePreview" style="margin:6px 0 10px 0; color:#2980b9; font-weight:bold;"></div>
-                <label for="addRateInput">가산 비율(%)</label>
-                <input type="text" id="addRateInput" placeholder="예: 10">
-                <label for="addAmountInput">직접 가산 금액(원)</label>
-                <input type="text" id="addAmountInput" placeholder="예: 200,000">
-                <label for="discountInput">할인 금액(원)</label>
-                <input type="text" id="discountInput" placeholder="예: 100,000">
-                <button id="calcFeeBtn">계산</button>
-                <div class="result" id="feeResult"></div>
+        <div id="feeCalculatorSection" style="display:none;">
+            <div class="calculator-container">
+                <div class="calculator" id="feeCalculator">
+                    <h2>수수료 계산기</h2>
+                    <label for="typeSelect">구분</label>
+                    <select id="typeSelect">
+                        <option value="개인">개인</option>
+                        <option value="법인">법인</option>
+                    </select>
+                    <label for="bizSelect">업종</label>
+                    <select id="bizSelect">
+                        <option value="서비스">서비스</option>
+                        <option value="요식업">요식업</option>
+                        <option value="도소매">도소매</option>
+                        <option value="의료업">의료업</option>
+                        <option value="신고대리">신고대리</option>
+                    </select>
+                    <label for="amountInput">매출액(원)</label>
+                    <input type="text" id="amountInput" placeholder="예: 1,000,000,000">
+                    <div id="baseFeePreview" style="margin:6px 0 10px 0; color:#2980b9; font-weight:bold;"></div>
+                    <label for="addRateInput">가산 비율(%)</label>
+                    <input type="text" id="addRateInput" placeholder="예: 10">
+                    <label for="addAmountInput">직접 가산 금액(원)</label>
+                    <input type="text" id="addAmountInput" placeholder="예: 200,000">
+                    <label for="discountInput">할인 금액(원)</label>
+                    <input type="text" id="discountInput" placeholder="예: 100,000">
+                    <button id="calcFeeBtn">계산</button>
+                    <div class="result" id="feeResult"></div>
+                </div>
             </div>
         </div>
         <div id="baseFeePreview" style="margin:6px 0 10px 0; color:#2980b9; font-weight:bold;"></div>
