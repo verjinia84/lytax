@@ -1068,6 +1068,8 @@
                     alert('근로조건을 입력하세요.');
                     return;
                 }
+                document.getElementById('jsonView').style.display = 'block';
+                document.getElementById('jsonView').innerText = 'GPT 호출 중...';
                 const prompt = `아래의 근로조건을 급여 계산에 필요한 json 형태로 변환해줘.\n- 야간근로시간(주): 22시~06시 사이의 근로시간을 모두 합산해서 계산해줘.\n- 연장근로시간(주): 하루 8시간 초과분, 주 40시간 초과분 중 큰 값을 계산해서 넣어줘.\n조건: ${input}\n\njson 예시:\n{\n  "hourlyWage": 10030,\n  "daysPerWeek": 5,\n  "hoursPerDay": 15,\n  "totalHoursPerWeek": 75,\n  "nightHours": 15,\n  "overtimeHours": 35,\n  "holidayHours": 0,\n  "breakHours": 0,\n  "over5Employees": true,\n  "targetSalary": null\n}`;
                 const res = await fetch('/api/gpt', {
                     method: 'POST',
