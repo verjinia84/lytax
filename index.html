@@ -437,13 +437,11 @@
     </div>
     
     <div class="main-content">
-        <div style="display:flex; justify-content:center; gap:10px; margin-bottom:20px;">
-            <button id="salaryCalcBtn" class="calculator-type-button">급여계산기</button>
-        </div>
         <h1>세금 계산기</h1>
         <div class="calculator-type-buttons">
             <button id="incomeButton" class="calculator-type-button active">2024년 종합소득세 계산기</button>
             <button id="giftButton" class="calculator-type-button">증여세 계산기</button>
+            <button id="salaryButton" class="calculator-type-button">급여계산기</button>
             <button id="feeButton" class="calculator-type-button">조정료 계산기</button>
             <button id="screenshotButton" class="calculator-type-button">스크린샷</button>
             <div class="dropdown">
@@ -453,7 +451,7 @@
                 </div>
             </div>
         </div>
-        <div id="incomeCalculatorSection">
+        <div id="incomeCalculatorSection" style="display:none;">
             <div class="calculator-container" id="calculatorContainer"></div>
             <div class="total-tax" id="totalTax"></div>
             <div class="buttons">
@@ -461,34 +459,33 @@
                 <button id="resetAll">모두 초기화</button>
             </div>
         </div>
+        <div id="giftCalculatorSection" style="display:none;">
+            <div class="calculator-container" id="giftCalculatorContainer"></div>
+            <div class="total-tax" id="giftTotalTax"></div>
+            <div class="buttons">
+                <button id="addGiftCalculator">계산기 추가</button>
+                <button id="resetGiftAll">모두 초기화</button>
+            </div>
+        </div>
+        <div id="salaryCalculatorSection" style="display:none;">
+            <div id="salaryCalcContainer"></div>
+        </div>
         <div id="feeCalculatorSection" style="display:none;">
-            <div class="calculator-container">
-                <div class="calculator" id="feeCalculator">
-                    <h2>수수료 계산기</h2>
-                    <label for="typeSelect">구분</label>
-                    <select id="typeSelect">
-                        <option value="개인">개인</option>
-                        <option value="법인">법인</option>
-                    </select>
-                    <label for="bizSelect">업종</label>
-                    <select id="bizSelect">
-                        <option value="서비스">서비스</option>
-                        <option value="요식업">요식업</option>
-                        <option value="도소매">도소매</option>
-                        <option value="의료업">의료업</option>
-                        <option value="신고대리">신고대리</option>
-                    </select>
-                    <label for="amountInput">매출액(원)</label>
-                    <input type="text" id="amountInput" placeholder="예: 1,000,000,000">
-                    <div id="baseFeePreview" style="margin:6px 0 10px 0; color:#2980b9; font-weight:bold;"></div>
-                    <label for="addRateInput">가산 비율(%)</label>
-                    <input type="text" id="addRateInput" placeholder="예: 10">
-                    <label for="addAmountInput">직접 가산 금액(원)</label>
-                    <input type="text" id="addAmountInput" placeholder="예: 200,000">
-                    <label for="discountInput">할인 금액(원)</label>
-                    <input type="text" id="discountInput" placeholder="예: 100,000">
-                    <div class="result" id="feeResult"></div>
-                </div>
+            <div class="container" id="feeCalcContainer">
+                <h2>조정료 계산기</h2>
+                <label>구분:</label>
+                <select id="typeSelect"><option value="">선택</option></select>
+                <label>업종:</label>
+                <select id="bizSelect"><option value="">선택</option></select>
+                <label>매출액(원):</label>
+                <input type="text" id="amountInput" placeholder="매출액 입력">
+                <label>가산 비율(%):</label>
+                <input type="text" id="addRateInput" placeholder="가산 비율 입력">
+                <label>직접입력 수수료(원):</label>
+                <input type="text" id="addAmountInput" placeholder="직접입력 수수료 입력">
+                <label>할인 금액(원):</label>
+                <input type="text" id="discountInput" placeholder="할인 금액 입력">
+                <div id="feeResult" class="result"></div>
             </div>
         </div>
         <div id="baseFeePreview" style="margin:6px 0 10px 0; color:#2980b9; font-weight:bold;"></div>
@@ -823,15 +820,369 @@
 
     // ------------------ 탭 전환 및 이벤트 ------------------
     function showSection(section) {
-        document.getElementById('incomeCalculatorSection').style.display = (section === 'income' || section === 'gift') ? 'block' : 'none';
+        document.getElementById('incomeCalculatorSection').style.display = (section === 'income') ? 'block' : 'none';
+        document.getElementById('giftCalculatorSection').style.display = (section === 'gift') ? 'block' : 'none';
+        document.getElementById('salaryCalculatorSection').style.display = (section === 'salary') ? 'block' : 'none';
         document.getElementById('feeCalculatorSection').style.display = (section === 'fee') ? 'block' : 'none';
         document.getElementById('incomeButton').classList.toggle('active', section === 'income');
         document.getElementById('giftButton').classList.toggle('active', section === 'gift');
+        document.getElementById('salaryButton').classList.toggle('active', section === 'salary');
         document.getElementById('feeButton').classList.toggle('active', section === 'fee');
         if (section === 'income') {
-            switchCalculatorType('income');
+            const container = document.getElementById('calculatorContainer');
+            container.innerHTML = '';
+            container.appendChild(createIncomeCalculator());
+            document.getElementById('totalTax').style.display = 'none';
         } else if (section === 'gift') {
-            switchCalculatorType('gift');
+            const container = document.getElementById('giftCalculatorContainer');
+            container.innerHTML = '';
+            container.appendChild(createGiftCalculator());
+            document.getElementById('giftTotalTax').style.display = 'block';
+        } else if (section === 'salary') {
+            // 급여계산기: salary_calculator.html의 스타일, HTML, JS를 완전히 동일하게 동적 삽입
+            const container = document.getElementById('salaryCalcContainer');
+            // 스타일 중복 방지
+            if (!document.getElementById('salaryCalcStyle')) {
+                const style = document.createElement('style');
+                style.id = 'salaryCalcStyle';
+                style.innerHTML = `
+                :root { --primary-color: #3498db; --secondary-color: #2980b9; --background-color: #ecf0f1; --text-color: #34495e; --input-background: #fff; --result-background: #e8f4fd; }
+                #salaryCalcContainer { max-width: 700px; margin: 30px auto; background: #fff; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 24px; }
+                #salaryCalcContainer h1 { text-align: center; color: var(--primary-color); margin-bottom: 20px; }
+                #salaryCalcContainer .input-row { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 8px; }
+                #salaryCalcContainer .input-row label.title-label { margin: 0; color: var(--secondary-color); font-weight: bold; font-size: 14px; min-width: 140px; }
+                #salaryCalcContainer .input-row input[type="text"] { flex: 1; min-width: 0; }
+                #salaryCalcContainer .input-row .ai-btn { margin-left: 0; }
+                #salaryCalcContainer .toggle-col { display: flex; flex-direction: column; align-items: center; min-width: 70px; }
+                #salaryCalcContainer .toggle-label { font-size: 12px; color: var(--secondary-color); font-weight: bold; margin-bottom: 2px; text-align: center; }
+                #salaryCalcContainer .switch { position: relative; display: inline-block; width: 44px; height: 24px; vertical-align: middle; }
+                #salaryCalcContainer .switch input { opacity: 0; width: 0; height: 0; }
+                #salaryCalcContainer .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .3s; border-radius: 24px; }
+                #salaryCalcContainer .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+                #salaryCalcContainer .switch input:checked + .slider { background-color: var(--primary-color); }
+                #salaryCalcContainer .switch input:checked + .slider:before { transform: translateX(20px); }
+                #salaryCalcContainer .form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 12px; margin-bottom: 10px; }
+                #salaryCalcContainer .form-grid > div { display: flex; flex-direction: column; }
+                #salaryCalcContainer label { display: block; margin: 6px 0 2px; color: var(--secondary-color); font-weight: bold; font-size: 13px; }
+                #salaryCalcContainer input[type="text"], #salaryCalcContainer input[type="number"] { width: 100%; padding: 6px 8px; border: 1px solid #bdc3c7; border-radius: 4px; background-color: var(--input-background); color: var(--text-color); font-size: 13px; margin-bottom: 0; box-sizing: border-box; }
+                #salaryCalcContainer .result { margin-top: 20px; padding: 12px; background-color: var(--result-background); border-radius: 4px; }
+                #salaryCalcContainer .result p { margin: 5px 0; font-weight: bold; white-space: pre-line; }
+                #salaryCalcContainer .buttons { display: flex; justify-content: space-between; margin-top: 20px; }
+                #salaryCalcContainer button { padding: 8px 16px; border: none; border-radius: 4px; background-color: var(--primary-color); color: #fff; cursor: pointer; transition: background-color 0.3s, transform 0.1s; font-size: 13px; font-weight: bold; }
+                #salaryCalcContainer button:hover { background-color: var(--secondary-color); transform: translateY(-2px); }
+                #salaryCalcContainer button:active { transform: translateY(0); }
+                #salaryCalcContainer .formula { background: #f9f9f9; border-radius: 4px; padding: 8px; margin-top: 10px; font-size: 13px; color: #555; }
+                #salaryCalcContainer .json-view { background: #f4f4f4; border-radius: 4px; padding: 8px; font-size: 12px; margin-top: 10px; color: #888; word-break: break-all; }
+                @media (max-width: 500px) { #salaryCalcContainer .form-grid { grid-template-columns: 1fr 1fr; } #salaryCalcContainer .input-row { flex-direction: column; align-items: stretch; gap: 4px; } #salaryCalcContainer .toggle-col { flex-direction: row; align-items: center; min-width: 0; } #salaryCalcContainer .toggle-label { margin-bottom: 0; margin-right: 8px; } }
+                @media (max-width: 350px) { #salaryCalcContainer .form-grid { grid-template-columns: 1fr; } }
+                `;
+                document.head.appendChild(style);
+            }
+            // HTML 삽입
+            container.innerHTML = `
+                <h1>AI 급여 계산기</h1>
+                <div class="input-row">
+                    <label class="title-label" for="naturalInput">자연어로 근로조건 입력:</label>
+                    <input type="text" id="naturalInput" placeholder="예: 주 5일, 하루 9시간, 시급 12000원, 야간근무 있음, 5인 이상 사업장...">
+                    <button class="ai-btn" id="aiAnalyzeBtn">AI로 해석 및 계산</button>
+                    <div class="toggle-col">
+                        <span class="toggle-label">5인 이상 사업장</span>
+                        <label class="switch" title="5인 이상 사업장">
+                            <input type="checkbox" id="over5Employees" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="json-view" id="jsonView" style="display:none;"></div>
+                <form id="salaryForm" style="margin-top:14px;">
+                    <div class="form-grid">
+                        <div><label>시급(원): <input type="text" id="hourlyWage" value="10,030"></label></div>
+                        <div><label>주 근로일수: <input type="text" id="daysPerWeek" value="5"></label></div>
+                        <div><label>하루 근로시간: <input type="text" id="hoursPerDay" value="8"></label></div>
+                        <div><label>주간 총 근로시간: <input type="text" id="totalHoursPerWeek" value="40"></label></div>
+                        <div><label>연장 근로시간(주): <input type="text" id="overtimeHours" value="0"></label></div>
+                        <div><label>야간 근로시간(주): <input type="text" id="nightHours" value="0"></label></div>
+                        <div><label>휴일 근로시간(주): <input type="text" id="holidayHours" value="0"></label></div>
+                        <div><label>휴게시간(주): <input type="text" id="breakHours" value="0"></label></div>
+                        <div><label>목표 월급(원): <input type="text" id="targetSalary" value=""></label></div>
+                    </div>
+                    <button type="button" id="salaryCalcBtn2">월급 계산</button>
+                </form>
+                <div class="result" id="salaryResult" style="display:none;"></div>
+                <div class="formula" id="formulaView" style="display:none;"></div>
+            `;
+            // JS 삽입 (즉시실행)
+            (function(){
+            function addComma(num) {
+                if (num === null || num === undefined || num === '') return '';
+                let n = String(num).replace(/[^\d.-]/g, '');
+                if (n === '') return '';
+                let parts = n.split('.');
+                parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                return parts.join('.');
+            }
+            function removeComma(str) {
+                return str.replace(/,/g, '');
+            }
+            const inputConfigs = [
+                {id:'hourlyWage', step:10, min:0},
+                {id:'daysPerWeek', step:1, min:1, max:7},
+                {id:'hoursPerDay', step:0.5, min:0, max:24},
+                {id:'totalHoursPerWeek', step:0.5, min:0, max:168},
+                {id:'overtimeHours', step:0.5, min:0, max:168},
+                {id:'nightHours', step:0.5, min:0, max:168},
+                {id:'holidayHours', step:0.5, min:0, max:168},
+                {id:'breakHours', step:0.5, min:0, max:168},
+                {id:'targetSalary', step:1000, min:0}
+            ];
+            inputConfigs.forEach(cfg => {
+                const el = document.getElementById(cfg.id);
+                if (el) {
+                    el.addEventListener('input', function(e) {
+                        let val = removeComma(this.value);
+                        if (val && !isNaN(val)) {
+                            this.value = addComma(val);
+                        } else {
+                            this.value = '';
+                        }
+                        calculateSalary();
+                    });
+                    const wrapper = document.createElement('div');
+                    wrapper.style.position = 'relative';
+                    wrapper.style.display = 'flex';
+                    wrapper.style.alignItems = 'center';
+                    el.parentNode.insertBefore(wrapper, el);
+                    wrapper.appendChild(el);
+                    const upBtn = document.createElement('button');
+                    upBtn.type = 'button';
+                    upBtn.innerHTML = '▲';
+                    upBtn.style.position = 'absolute';
+                    upBtn.style.right = '0';
+                    upBtn.style.top = '0';
+                    upBtn.style.width = '22px';
+                    upBtn.style.height = '16px';
+                    upBtn.style.fontSize = '10px';
+                    upBtn.style.padding = '0';
+                    upBtn.style.background = '#eee';
+                    upBtn.style.border = '1px solid #ccc';
+                    upBtn.style.borderRadius = '0 4px 0 0';
+                    upBtn.style.cursor = 'pointer';
+                    upBtn.tabIndex = -1;
+                    const downBtn = document.createElement('button');
+                    downBtn.type = 'button';
+                    downBtn.innerHTML = '▼';
+                    downBtn.style.position = 'absolute';
+                    downBtn.style.right = '0';
+                    downBtn.style.bottom = '0';
+                    downBtn.style.width = '22px';
+                    downBtn.style.height = '16px';
+                    downBtn.style.fontSize = '10px';
+                    downBtn.style.padding = '0';
+                    downBtn.style.background = '#eee';
+                    downBtn.style.border = '1px solid #ccc';
+                    downBtn.style.borderRadius = '0 0 4px 0';
+                    downBtn.style.cursor = 'pointer';
+                    downBtn.tabIndex = -1;
+                    wrapper.appendChild(upBtn);
+                    wrapper.appendChild(downBtn);
+                    upBtn.addEventListener('click', function() {
+                        let val = parseFloat(removeComma(el.value)) || 0;
+                        val += cfg.step;
+                        if (cfg.max !== undefined && val > cfg.max) val = cfg.max;
+                        if (cfg.min !== undefined && val < cfg.min) val = cfg.min;
+                        el.value = addComma(val);
+                        el.dispatchEvent(new Event('input', { bubbles: true }));
+                    });
+                    downBtn.addEventListener('click', function() {
+                        let val = parseFloat(removeComma(el.value)) || 0;
+                        val -= cfg.step;
+                        if (cfg.max !== undefined && val > cfg.max) val = cfg.max;
+                        if (cfg.min !== undefined && val < cfg.min) val = cfg.min;
+                        el.value = addComma(val);
+                        el.dispatchEvent(new Event('input', { bubbles: true }));
+                    });
+                }
+            });
+            document.getElementById('over5Employees').addEventListener('change', calculateSalary);
+            document.getElementById('naturalInput').addEventListener('input', function(){
+                document.getElementById('jsonView').style.display = 'none';
+            });
+            const manualInput = {
+                totalHoursPerWeek: false,
+                overtimeHours: false,
+                nightHours: false
+            };
+            ['totalHoursPerWeek', 'overtimeHours', 'nightHours'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', (e) => {
+                        if (e.isTrusted) manualInput[id] = true;
+                    });
+                }
+            });
+            ['daysPerWeek', 'hoursPerDay'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', function() {
+                        const days = Number(removeComma(document.getElementById('daysPerWeek').value)) || 0;
+                        const hours = Number(removeComma(document.getElementById('hoursPerDay').value)) || 0;
+                        const total = days * hours;
+                        if (!manualInput.totalHoursPerWeek) {
+                            const totalEl = document.getElementById('totalHoursPerWeek');
+                            if (totalEl) {
+                                totalEl.value = addComma(total);
+                                totalEl.dispatchEvent(new Event('input', { bubbles: true }));
+                            }
+                        }
+                        let night = 0;
+                        for (let h = 0; h < hours; h++) {
+                            let hour = (9 + h) % 24;
+                            if (hour >= 22 || hour < 6) night++;
+                        }
+                        night = night * days;
+                        if (!manualInput.nightHours) {
+                            const nightEl = document.getElementById('nightHours');
+                            if (nightEl) {
+                                nightEl.value = addComma(night);
+                                nightEl.dispatchEvent(new Event('input', { bubbles: true }));
+                            }
+                        }
+                        let over8 = Math.max(0, (hours - 8) * days);
+                        let over40 = Math.max(0, total - 40);
+                        let overtime = Math.max(over8, over40);
+                        if (!manualInput.overtimeHours) {
+                            const overEl = document.getElementById('overtimeHours');
+                            if (overEl) {
+                                overEl.value = addComma(overtime);
+                                overEl.dispatchEvent(new Event('input', { bubbles: true }));
+                            }
+                        }
+                    });
+                }
+            });
+            document.getElementById('aiAnalyzeBtn').addEventListener('click', analyzeInput);
+            document.getElementById('salaryCalcBtn2').addEventListener('click', calculateSalary);
+            async function analyzeInput() {
+                const input = document.getElementById('naturalInput').value;
+                if (!input.trim()) {
+                    alert('근로조건을 입력하세요.');
+                    return;
+                }
+                const prompt = `아래의 근로조건을 급여 계산에 필요한 json 형태로 변환해줘.\n- 야간근로시간(주): 22시~06시 사이의 근로시간을 모두 합산해서 계산해줘.\n- 연장근로시간(주): 하루 8시간 초과분, 주 40시간 초과분 중 큰 값을 계산해서 넣어줘.\n조건: ${input}\n\njson 예시:\n{\n  "hourlyWage": 10030,\n  "daysPerWeek": 5,\n  "hoursPerDay": 15,\n  "totalHoursPerWeek": 75,\n  "nightHours": 15,\n  "overtimeHours": 35,\n  "holidayHours": 0,\n  "breakHours": 0,\n  "over5Employees": true,\n  "targetSalary": null\n}`;
+                const res = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${{secret.GPT_API}}},
+                    body: JSON.stringify({
+                        model: 'gpt-4.1',
+                        messages: [{role: 'user', content: prompt}],
+                        max_tokens: 512,
+                        temperature: 0.2
+                    })
+                });
+                let jsonText = await res.json();
+                jsonText = jsonText.choices[0].message.content;
+                try {
+                    jsonText = jsonText.match(/\{[\s\S]*\}/)[0];
+                    const jsonObj = JSON.parse(jsonText);
+                    document.getElementById('jsonView').style.display = 'block';
+                    document.getElementById('jsonView').innerText = jsonText;
+                    let autoNight = 0, autoOver = 0;
+                    if (jsonObj.hoursPerDay && jsonObj.daysPerWeek) {
+                        let start = 9;
+                        let end = 9 + Number(jsonObj.hoursPerDay);
+                        for (let h = 0; h < Number(jsonObj.hoursPerDay); h++) {
+                            let hour = (start + h) % 24;
+                            if (hour >= 22 || hour < 6) autoNight++;
+                        }
+                        autoNight = autoNight * Number(jsonObj.daysPerWeek);
+                        let over8 = Math.max(0, (Number(jsonObj.hoursPerDay) - 8) * Number(jsonObj.daysPerWeek));
+                        let over40 = Math.max(0, Number(jsonObj.totalHoursPerWeek || (jsonObj.hoursPerDay * jsonObj.daysPerWeek)) - 40);
+                        autoOver = Math.max(over8, over40);
+                    }
+                    for (const key in jsonObj) {
+                        const el = document.getElementById(key);
+                        if (el) {
+                            if (typeof jsonObj[key] === 'boolean') {
+                                el.checked = jsonObj[key];
+                            } else {
+                                let v = jsonObj[key];
+                                if (key === 'nightHours' && (!v || v === 0) && autoNight > 0) v = autoNight;
+                                if (key === 'overtimeHours' && (!v || v === 0) && autoOver > 0) v = autoOver;
+                                el.value = addComma(v);
+                                el.dispatchEvent(new Event('input', { bubbles: true }));
+                            }
+                        }
+                    }
+                    if (!('nightHours' in jsonObj) && autoNight > 0) {
+                        const el = document.getElementById('nightHours');
+                        if (el) {
+                            el.value = addComma(autoNight);
+                            el.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                    }
+                    if (!('overtimeHours' in jsonObj) && autoOver > 0) {
+                        const el = document.getElementById('overtimeHours');
+                        if (el) {
+                            el.value = addComma(autoOver);
+                            el.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                    }
+                    calculateSalary();
+                    manualInput.totalHoursPerWeek = false;
+                    manualInput.overtimeHours = false;
+                    manualInput.nightHours = false;
+                } catch (e) {
+                    document.getElementById('jsonView').style.display = 'block';
+                    document.getElementById('jsonView').innerText = 'JSON 파싱 실패: ' + (jsonText || '');
+                }
+            }
+            function calculateSalary() {
+                let hourlyWage = Number(removeComma(document.getElementById('hourlyWage').value)) || 10030;
+                let daysPerWeek = Number(removeComma(document.getElementById('daysPerWeek').value)) || 5;
+                let hoursPerDay = Number(removeComma(document.getElementById('hoursPerDay').value)) || 8;
+                let totalHoursPerWeek = Number(removeComma(document.getElementById('totalHoursPerWeek').value)) || (daysPerWeek * hoursPerDay);
+                let overtimeHoursInput = Number(removeComma(document.getElementById('overtimeHours').value)) || 0;
+                let nightHours = Number(removeComma(document.getElementById('nightHours').value)) || 0;
+                let holidayHours = Number(removeComma(document.getElementById('holidayHours').value)) || 0;
+                let breakHours = Number(removeComma(document.getElementById('breakHours').value)) || 0;
+                let over5Employees = document.getElementById('over5Employees').checked;
+                let targetSalary = Number(removeComma(document.getElementById('targetSalary').value)) || null;
+                let baseHours = totalHoursPerWeek - breakHours;
+                let basePay = baseHours * hourlyWage;
+                let over8 = Math.max(0, (hoursPerDay - 8) * daysPerWeek);
+                let over40 = Math.max(0, totalHoursPerWeek - 40);
+                let overtimeHours = overtimeHoursInput > 0 ? overtimeHoursInput : Math.max(over8, over40);
+                let overtimeRate = over5Employees ? 1.5 : 1.0;
+                let nightRate = over5Employees ? 1.5 : 1.0;
+                let holidayRate = over5Employees ? 1.5 : 1.0;
+                let overtimePay = overtimeHours * hourlyWage * (overtimeRate - 1);
+                let nightPay = nightHours * hourlyWage * (nightRate - 1);
+                let holidayPay = holidayHours * hourlyWage * (holidayRate - 1);
+                let weeklyPay = (basePay + overtimePay + nightPay + holidayPay);
+                let monthlyPay = weeklyPay * 4.345;
+                let calculatedHourly = null;
+                if (targetSalary) {
+                    calculatedHourly = Math.round(targetSalary / (baseHours * 4.345));
+                }
+                let resultHtml = `<p>월급: <b>${addComma(Math.round(monthlyPay))} 원</b></p>`;
+                resultHtml += `<p>주급: ${addComma(Math.round(weeklyPay))} 원</p>`;
+                resultHtml += `<p>기본근로시간(주): ${addComma(baseHours)}시간\n연장근로시간(주): ${addComma(overtimeHours)}시간\n야간근로(주): ${addComma(nightHours)}시간\n휴일근로(주): ${addComma(holidayHours)}시간</p>`;
+                resultHtml += `<p>연장수당: ${addComma(Math.round(overtimePay * 4.345))}원\n야간수당: ${addComma(Math.round(nightPay * 4.345))}원\n휴일수당: ${addComma(Math.round(holidayPay * 4.345))}원</p>`;
+                if (calculatedHourly) {
+                    resultHtml += `<p>목표 월급에 필요한 시급: <b>${addComma(calculatedHourly)} 원</b></p>`;
+                }
+                document.getElementById('salaryResult').style.display = 'block';
+                document.getElementById('salaryResult').innerHTML = resultHtml;
+                let formula = `월급 = ( (기본근로 ${addComma(baseHours)}h × 시급 ${addComma(hourlyWage)}) + (연장근로 ${addComma(overtimeHours)}h × 시급 × ${overtimeRate-1}) + (야간근로 ${addComma(nightHours)}h × 시급 × ${nightRate-1}) + (휴일근로 ${addComma(holidayHours)}h × 시급 × ${holidayRate-1}) ) × 4.345`;
+                document.getElementById('formulaView').style.display = 'block';
+                document.getElementById('formulaView').innerText = formula;
+            }
+            calculateSalary();
+            })();
+        } else if (section === 'fee') {
+            // 조정료 계산기는 이미 feeCalcContainer에 UI가 있으므로 별도 초기화 불필요
         }
     }
     function switchCalculatorType(type) {
@@ -890,9 +1241,26 @@
         loadRateTable();
         document.getElementById('incomeButton').addEventListener('click', () => showSection('income'));
         document.getElementById('giftButton').addEventListener('click', () => showSection('gift'));
+        document.getElementById('salaryButton').addEventListener('click', () => showSection('salary'));
         document.getElementById('feeButton').addEventListener('click', () => showSection('fee'));
-        document.getElementById('addCalculator').addEventListener('click', addCalculator);
-        document.getElementById('resetAll').addEventListener('click', resetAll);
+        document.getElementById('addCalculator').addEventListener('click', function() {
+            const container = document.getElementById('calculatorContainer');
+            container.appendChild(createIncomeCalculator());
+        });
+        document.getElementById('resetAll').addEventListener('click', function() {
+            const container = document.getElementById('calculatorContainer');
+            container.innerHTML = '';
+            container.appendChild(createIncomeCalculator());
+        });
+        document.getElementById('addGiftCalculator').addEventListener('click', function() {
+            const container = document.getElementById('giftCalculatorContainer');
+            container.appendChild(createGiftCalculator());
+        });
+        document.getElementById('resetGiftAll').addEventListener('click', function() {
+            const container = document.getElementById('giftCalculatorContainer');
+            container.innerHTML = '';
+            container.appendChild(createGiftCalculator());
+        });
         document.getElementById('amountInput').addEventListener('input', function() {
             let value = this.value.replace(/[^\d]/g, '');
             if (value) {
@@ -932,7 +1300,7 @@
             calcFee();
         });
         document.getElementById('salaryCalcBtn').addEventListener('click', function() {
-            document.getElementById('salaryCalculatorModal').style.display = 'flex';
+            showSection('salary');
         });
         // 초기화
         showSection('income');
