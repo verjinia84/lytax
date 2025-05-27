@@ -436,11 +436,12 @@
             max-width: 350px;
             margin-bottom: 15px;
         }
+        .calculator-fee h2 {
+            text-align: left;
+            /* color: var(--secondary-color); */
+        }
         .calculator-fee label {
-            display: block;
-            margin: 10px 0 3px;
-            color: var(--secondary-color);
-            font-weight: bold;
+            text-align: left;
         }
         .calculator-fee input[type="text"], .calculator-fee select {
             display: block;
@@ -459,17 +460,13 @@
             background-color: var(--result-background);
             border-radius: 4px;
         }
+        .calculator-fee label {
+            text-align: left;
+        }
     </style>
 </head>
 <body>
-    <div id="historyPanel" class="history-panel">
-        <button id="toggleHistory" class="toggle-history">히스토리</button>
-        <div class="history-content">
-            <button id="newTable" class="new-table-button">새 테이블</button>
-            <div id="historyItems"></div>
-        </div>
-    </div>
-    
+    <!-- 히스토리 패널 및 버튼 완전 제거 -->
     <div class="main-content">
         <h1>세금 계산기</h1>
         <div class="calculator-type-buttons">
@@ -498,8 +495,8 @@
         <div id="salaryCalculatorSection" style="display:none;">
             <div id="salaryCalcContainer"></div>
         </div>
-        <div id="feeCalculatorSection" style="display:none;">
-            <div class="calculator calculator-fee" id="feeCalcContainer">
+        <div id="feeCalculatorSection" style="display:none; text-align:center;">
+            <div class="calculator calculator-fee" id="feeCalcContainer" style="margin: 0 auto;">
                 <h2>조정료 계산기</h2>
                 <label>구분:</label>
                 <select id="typeSelect"><option value="">선택</option></select>
@@ -777,6 +774,8 @@
             const text = await res.text();
             const lines = text.split('\n').map(l => l.trim()).filter(l => l);
             let isHeader = true;
+            let typeSet = new Set();
+            let bizMap = {};
             for (let line of lines) {
                 if (isHeader) { isHeader = false; continue; }
                 const [구분, 업종, 수입금액, 요율, 베이스, 추가분, 합계] = line.split(',').map(x => (x||'').trim());
@@ -789,6 +788,34 @@
                     추가분: Number((추가분||'').replace(/[^0-9]/g, '') || 0),
                     합계: Number((합계||'').replace(/[^0-9]/g, '') || 0)
                 });
+                typeSet.add(구분.trim());
+                if (!bizMap[구분.trim()]) bizMap[구분.trim()] = new Set();
+                bizMap[구분.trim()].add(업종.trim());
+            }
+            // 구분 드롭박스 채우기
+            const typeSelect = document.getElementById('typeSelect');
+            if (typeSelect) {
+                typeSelect.innerHTML = '<option value="">선택</option>' + Array.from(typeSet).map(type => `<option value="${type}">${type}</option>`).join('');
+            }
+            // 업종 드롭박스는 구분 선택 시 동적으로 채움
+            const bizSelect = document.getElementById('bizSelect');
+            if (bizSelect) {
+                bizSelect.innerHTML = '<option value="">선택</option>';
+            }
+            // 구분 선택 시 업종 드롭박스 채우기 이벤트
+            if (typeSelect && bizSelect) {
+                typeSelect.addEventListener('change', function() {
+                    const selectedType = this.value.trim();
+                    if (selectedType && bizMap[selectedType]) {
+                        bizSelect.innerHTML = '<option value="">선택</option>' + Array.from(bizMap[selectedType]).map(biz => `<option value="${biz}">${biz}</option>`).join('');
+                    } else {
+                        bizSelect.innerHTML = '<option value="">선택</option>';
+                    }
+                });
+            }
+            // 업종 드롭박스 초기화
+            if (typeSelect && typeSelect.value && bizMap[typeSelect.value.trim()]) {
+                bizSelect.innerHTML = '<option value="">선택</option>' + Array.from(bizMap[typeSelect.value.trim()]).map(biz => `<option value="${biz}">${biz}</option>`).join('');
             }
             for (const type in rateTable) {
                 for (const biz in rateTable[type]) {
@@ -871,13 +898,15 @@
             // 급여계산기: salary_calculator.html의 스타일, HTML, JS를 완전히 동일하게 동적 삽입
             const container = document.getElementById('salaryCalcContainer');
             // 스타일 중복 방지
+            const oldStyle = document.getElementById('salaryCalcStyle');
+            if (oldStyle) oldStyle.remove();
             if (!document.getElementById('salaryCalcStyle')) {
                 const style = document.createElement('style');
                 style.id = 'salaryCalcStyle';
                 style.innerHTML = `
                 :root { --primary-color: #3498db; --secondary-color: #2980b9; --background-color: #ecf0f1; --text-color: #34495e; --input-background: #fff; --result-background: #e8f4fd; }
                 #salaryCalcContainer { max-width: 700px; margin: 30px auto; background: #fff; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 24px; }
-                #salaryCalcContainer h1 { text-align: center; color: var(--primary-color); margin-bottom: 20px; }
+                #salaryCalcContainer h1 { text-align: center; margin-bottom: 20px; }
                 #salaryCalcContainer .input-row { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 8px; }
                 #salaryCalcContainer .input-row label.title-label { margin: 0; color: var(--secondary-color); font-weight: bold; font-size: 14px; min-width: 140px; }
                 #salaryCalcContainer .input-row input[type="text"] { flex: 1; min-width: 0; }
@@ -1189,22 +1218,44 @@
                 let overtimePay = overtimeHours * hourlyWage * (overtimeRate - 1);
                 let nightPay = nightHours * hourlyWage * (nightRate - 1);
                 let holidayPay = holidayHours * hourlyWage * (holidayRate - 1);
+                // 주휴시간 및 주휴수당 계산
+                let weeklyHolidayHours = Math.min((totalHoursPerWeek * 8) / 40, 8);
+                let weeklyHolidayPay = weeklyHolidayHours * hourlyWage;
                 let weeklyPay = (basePay + overtimePay + nightPay + holidayPay);
-                let monthlyPay = weeklyPay * 4.345;
+                let totalWeeklyPay = weeklyPay + weeklyHolidayPay;
+                let monthlyPay = totalWeeklyPay * 4.345;
+                let monthlyHolidayPay = weeklyHolidayPay * 4.345;
                 let calculatedHourly = null;
                 if (targetSalary) {
                     calculatedHourly = Math.round(targetSalary / (baseHours * 4.345));
                 }
-                let resultHtml = `<p>월급: <b>${addComma(Math.round(monthlyPay))} 원</b></p>`;
-                resultHtml += `<p>주급: ${addComma(Math.round(weeklyPay))} 원</p>`;
-                resultHtml += `<p>기본근로시간(주): ${addComma(baseHours)}시간\n연장근로시간(주): ${addComma(overtimeHours)}시간\n야간근로(주): ${addComma(nightHours)}시간\n휴일근로(주): ${addComma(holidayHours)}시간</p>`;
-                resultHtml += `<p>연장수당: ${addComma(Math.round(overtimePay * 4.345))}원\n야간수당: ${addComma(Math.round(nightPay * 4.345))}원\n휴일수당: ${addComma(Math.round(holidayPay * 4.345))}원</p>`;
+                let resultHtml = '';
+                // 시간 정보 (2단 레이아웃)
+                resultHtml += `<p><b>시간(주간 기준)</b></p>`;
+                resultHtml += `<div style=\"display: flex; flex-wrap: wrap; gap: 8px 24px; max-width: 400px;\">`;
+                resultHtml += `<span style=\"flex:1 1 180px; font-weight:bold;\">기본근로시간: ${addComma(baseHours)}시간</span>`;
+                resultHtml += `<span style=\"flex:1 1 180px; font-weight:bold;\">주휴시간: ${addComma(weeklyHolidayHours)}시간</span>`;
+                resultHtml += `<span style=\"flex:1 1 180px; font-weight:bold;\">연장근로시간: ${addComma(overtimeHours)}시간</span>`;
+                resultHtml += `<span style=\"flex:1 1 180px; font-weight:bold;\">야간근로시간: ${addComma(nightHours)}시간</span>`;
+                resultHtml += `<span style=\"flex:1 1 180px; font-weight:bold;\">휴일근로시간: ${addComma(holidayHours)}시간</span>`;
+                resultHtml += `</div><br>`;
+                // 수당 정보
+                resultHtml += `<p><b>수당(월 기준)</b></p>`;
+                resultHtml += `<p>주휴수당: ${addComma(Math.round(monthlyHolidayPay))}원</p>`;
+                resultHtml += `<p>연장수당: ${addComma(Math.round(overtimePay * 4.345))}원</p>`;
+                resultHtml += `<p>야간수당: ${addComma(Math.round(nightPay * 4.345))}원</p>`;
+                resultHtml += `<p>휴일수당: ${addComma(Math.round(holidayPay * 4.345))}원</p>`;
+                resultHtml += `<br>`;
+                // 월급/주급/주휴수당(주)
+                resultHtml += `<p><b>월급: ${addComma(Math.round(monthlyPay))} 원</b></p>`;
+                resultHtml += `<p>주급(주휴 포함): ${addComma(Math.round(totalWeeklyPay))} 원</p>`;
+                resultHtml += `<p>주휴수당(주): ${addComma(Math.round(weeklyHolidayPay))} 원</p>`;
                 if (calculatedHourly) {
                     resultHtml += `<p>목표 월급에 필요한 시급: <b>${addComma(calculatedHourly)} 원</b></p>`;
                 }
                 document.getElementById('salaryResult').style.display = 'block';
                 document.getElementById('salaryResult').innerHTML = resultHtml;
-                let formula = `월급 = ( (기본근로 ${addComma(baseHours)}h × 시급 ${addComma(hourlyWage)}) + (연장근로 ${addComma(overtimeHours)}h × 시급 × ${overtimeRate-1}) + (야간근로 ${addComma(nightHours)}h × 시급 × ${nightRate-1}) + (휴일근로 ${addComma(holidayHours)}h × 시급 × ${holidayRate-1}) ) × 4.345`;
+                let formula = `월급 = ( (기본근로 ${addComma(baseHours)}h × 시급 ${addComma(hourlyWage)}) + (주휴시간 ${addComma(weeklyHolidayHours)}h × 시급 ${addComma(hourlyWage)}) + (연장근로 ${addComma(overtimeHours)}h × 시급 × ${overtimeRate-1}) + (야간근로 ${addComma(nightHours)}h × 시급 × ${nightRate-1}) + (휴일근로 ${addComma(holidayHours)}h × 시급 × ${holidayRate-1}) ) × 4.345`;
                 document.getElementById('formulaView').style.display = 'block';
                 document.getElementById('formulaView').innerText = formula;
             }
@@ -1333,6 +1384,9 @@
         });
         // 초기화
         showSection('income');
+        // AI 급여 계산기 제목 색상 강제 검정색
+        const h1 = document.querySelector('#salaryCalcContainer h1');
+        if (h1) h1.style.color = '#222';
     });
 
     // 스크린샷 모달 생성 및 기능 구현
@@ -1369,7 +1423,18 @@
     async function saveScreenshot(type) {
         const section = document.querySelector('.main-content > div:not([style*="display: none"]) .calculator, .main-content > div:not([style*="display: none"]) .calculator-fee');
         if (!section) return alert('저장할 계산기 영역이 없습니다.');
-        await html2canvas(section).then(canvas => {
+        // 실제 화면에 보이는 크기와 해상도에 맞게 스케일 조정
+        const rect = section.getBoundingClientRect();
+        const scale = window.devicePixelRatio || 1;
+        await html2canvas(section, {
+            backgroundColor: null,
+            scale: scale,
+            width: rect.width,
+            height: rect.height,
+            useCORS: true,
+            windowWidth: document.documentElement.clientWidth,
+            windowHeight: document.documentElement.clientHeight
+        }).then(canvas => {
             if (type === 'png') {
                 const link = document.createElement('a');
                 link.download = 'calculator.png';
@@ -1377,8 +1442,9 @@
                 link.click();
             } else if (type === 'pdf') {
                 const imgData = canvas.toDataURL('image/png');
-                const pdf = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'px', format: [canvas.width, canvas.height] });
-                pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+                // PDF 크기를 실제 화면 크기와 비슷하게 맞춤
+                const pdf = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'px', format: [rect.width, rect.height] });
+                pdf.addImage(imgData, 'PNG', 0, 0, rect.width, rect.height);
                 pdf.save('calculator.pdf');
             }
         });
