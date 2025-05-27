@@ -1421,32 +1421,74 @@
         }
     }
     async function saveScreenshot(type) {
-        const section = document.querySelector('.main-content > div:not([style*="display: none"]) .calculator, .main-content > div:not([style*="display: none"]) .calculator-fee');
+        // 현재 어떤 계산기 탭이 열려있는지 확인
+        const incomeVisible = document.getElementById('incomeCalculatorSection').style.display !== 'none';
+        const giftVisible = document.getElementById('giftCalculatorSection').style.display !== 'none';
+        const salaryVisible = document.getElementById('salaryCalculatorSection').style.display !== 'none';
+        const feeVisible = document.getElementById('feeCalculatorSection').style.display !== 'none';
+
+        let section = null;
+        if (incomeVisible) {
+            section = document.querySelector('#incomeCalculatorSection .calculator');
+        } else if (giftVisible) {
+            section = document.querySelector('#giftCalculatorSection .calculator');
+        } else if (salaryVisible) {
+            section = document.getElementById('salaryCalcContainer');
+        } else if (feeVisible) {
+            section = document.getElementById('feeCalcContainer');
+        }
+
         if (!section) return alert('저장할 계산기 영역이 없습니다.');
-        // 실제 화면에 보이는 크기와 해상도에 맞게 스케일 조정
+
+        // 임시 스타일 적용
+        const originalOverflow = section.style.overflow;
+        const originalPadding = section.style.paddingBottom;
+        section.style.overflow = 'visible';
+        section.style.paddingBottom = '32px';
+        section.style.boxSizing = 'border-box';
+        const inputEls = section.querySelectorAll('input, select, textarea');
+        const originalLineHeights = [];
+        const originalPaddings = [];
+        inputEls.forEach(el => {
+          originalLineHeights.push(el.style.lineHeight);
+          originalPaddings.push(el.style.paddingBottom);
+          el.style.lineHeight = '1.5';
+          el.style.paddingBottom = '6px';
+        });
+
         const rect = section.getBoundingClientRect();
-        const scale = window.devicePixelRatio || 1;
+        const scale = 2;
         await html2canvas(section, {
-            backgroundColor: null,
+            backgroundColor: '#fff',
             scale: scale,
             width: rect.width,
-            height: rect.height,
+            height: rect.height + 32,
             useCORS: true,
             windowWidth: document.documentElement.clientWidth,
-            windowHeight: document.documentElement.clientHeight
+            windowHeight: document.documentElement.clientHeight,
+            scrollY: -window.scrollY
         }).then(canvas => {
-            if (type === 'png') {
-                const link = document.createElement('a');
-                link.download = 'calculator.png';
-                link.href = canvas.toDataURL('image/png');
-                link.click();
-            } else if (type === 'pdf') {
-                const imgData = canvas.toDataURL('image/png');
-                // PDF 크기를 실제 화면 크기와 비슷하게 맞춤
-                const pdf = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'px', format: [rect.width, rect.height] });
-                pdf.addImage(imgData, 'PNG', 0, 0, rect.width, rect.height);
-                pdf.save('calculator.pdf');
-            }
+            // 스타일 복원
+            section.style.overflow = originalOverflow;
+            section.style.paddingBottom = originalPadding;
+            inputEls.forEach((el, i) => {
+              el.style.lineHeight = originalLineHeights[i];
+              el.style.paddingBottom = originalPaddings[i];
+            });
+            canvas.toBlob(function(blob) {
+                if (type === 'png') {
+                    const link = document.createElement('a');
+                    link.download = 'calculator.png';
+                    link.href = URL.createObjectURL(blob);
+                    link.click();
+                    URL.revokeObjectURL(link.href);
+                } else if (type === 'pdf') {
+                    const imgData = canvas.toDataURL('image/png');
+                    const pdf = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'px', format: [rect.width, rect.height + 32] });
+                    pdf.addImage(imgData, 'PNG', 0, 0, rect.width, rect.height + 32);
+                    pdf.save('calculator.pdf');
+                }
+            }, 'image/png');
         });
     }
     document.getElementById('screenshotButton').addEventListener('click', showScreenshotModal);
